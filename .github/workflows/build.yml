@@ -1,17 +1,22 @@
 name: build
 
-# Tier 1 of issue #1: a real monkeyc build against a real device definition.
+# A real monkeyc build against a real device definition.
 #
-# The Connect IQ SDK ships NO device definitions -- they are a separate,
-# authenticated download -- so this job needs Garmin credentials to run at all.
-# Until GARMIN_USERNAME / GARMIN_PASSWORD are set as repository secrets it
-# reports that it is inactive and exits successfully, rather than failing on
-# every push or, worse, passing silently while checking nothing.
+# DORMANT BY DECISION -- see issue #1. The Connect IQ SDK ships NO device
+# definitions; they are a separate, authenticated download, so this job needs
+# Garmin credentials. Those are full-privilege personal account credentials,
+# not scoped tokens, and the decision was not to put them in a public
+# repository's secrets.
+#
+# This file is kept because it documents precisely what a credentialed build
+# requires, and activates by adding two secrets if that is ever revisited.
+#
+# It is manual-dispatch only on purpose. Running on push would post a green
+# "monkeyc (enduro3): pass" against every commit while building nothing --
+# a check that cannot fail is worse than no check, because it reads as
+# coverage that does not exist.
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -33,40 +38,30 @@ jobs:
           GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
         run: |
           set -euo pipefail
-          # Forks never receive secrets. Say so loudly: a build job that is
-          # quietly inert looks identical to one that passed.
-          if [ "${{ github.event_name }}" = "pull_request" ] && \
-             [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-            echo "::notice::fork pull request - secrets are unavailable, device build skipped"
-            echo "can_build=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          # Manual dispatch only, so there is no fork-PR case to handle.
           if [ -z "${GARMIN_USERNAME:-}" ]; then
-            echo "::notice::GARMIN_USERNAME is not set - device build inactive (see issue #1)"
-            echo "can_build=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::GARMIN_USERNAME is not set - this workflow cannot build." \
+                 "It is dormant by decision (issue #1). Set GARMIN_USERNAME," \
+                 "GARMIN_PASSWORD and the CIQ_AGREEMENT_HASH variable to enable it."
+            exit 1
           fi
           echo "can_build=true" >> "$GITHUB_OUTPUT"
 
       - name: Set up Go
-        if: steps.gate.outputs.can_build == 'true'
         uses: actions/setup-go@v7
         with:
           go-version: stable
 
       - name: Install connect-iq-sdk-manager
-        if: steps.gate.outputs.can_build == 'true'
         run: go install github.com/lindell/connect-iq-sdk-manager-cli@latest
 
       - name: Cache SDK and device definitions
-        if: steps.gate.outputs.can_build == 'true'
         uses: actions/cache@v6
         with:
           path: ~/.config/connect-iq-sdk-manager
           key: ciq-${{ env.CIQ_SDK_VERSION }}-${{ hashFiles('manifest.xml') }}
 
       - name: Fetch SDK and devices
-        if: steps.gate.outputs.can_build == 'true'
         env:
           GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
@@ -79,7 +74,6 @@ jobs:
           echo "$(connect-iq-sdk-manager sdk current-path)/bin" >> "$GITHUB_PATH"
 
       - name: Generate a throwaway signing key
-        if: steps.gate.outputs.can_build == 'true'
         run: |
           set -euo pipefail
           # Side-loaded builds do not need a stable signing identity; only a
@@ -89,7 +83,6 @@ jobs:
             -in ci_key.pem -out ci_key.der -nocrypt
 
       - name: Build for enduro3
-        if: steps.gate.outputs.can_build == 'true'
         run: |
           set -euo pipefail
           mkdir -p build
@@ -97,7 +90,6 @@ jobs:
             -o build/Ridgeline.prg -y ci_key.der
 
       - name: Type check (report only)
-        if: steps.gate.outputs.can_build == 'true'
         continue-on-error: true
         run: |
           # ~78 errors today, nearly all missing type annotations. Reported so
@@ -108,11 +100,10 @@ jobs:
           echo "strict-mode findings: $(grep -c '^ERROR' strict.log || echo 0)"
 
       - name: Remove the signing key before archiving
-        if: always() && steps.gate.outputs.can_build == 'true'
+        if: always()
         run: rm -f ci_key.pem ci_key.der
 
       - name: Upload the build
-        if: steps.gate.outputs.can_build == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: Ridgeline-enduro3
