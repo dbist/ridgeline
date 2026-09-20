@@ -182,6 +182,23 @@ Seconds force a 1 Hz redraw while the wrist is raised; `onEnterSleep` drops back
 to once-a-minute. This is the normal cost of any seconds-displaying face — turn
 seconds off in settings if you want the stock-face battery life back.
 
+## Continuous integration
+
+`checks.yml` runs on every push and pull request and needs no credentials:
+XML and SVG well-formedness, a guard against key material or build output
+being committed, and relative-link validation across the Markdown.
+
+There is deliberately **no automated device build**. The Connect IQ SDK ships
+no device definitions — they are a separate, authenticated download — so
+building for a specific watch in CI requires Garmin account credentials. Those
+are full-privilege personal credentials rather than scoped tokens, and the
+decision was not to place them in a public repository's secrets (issue #1).
+
+`build.yml` documents what such a build would require and is manual-dispatch
+only. It fails immediately unless `GARMIN_USERNAME`, `GARMIN_PASSWORD` and the
+`CIQ_AGREEMENT_HASH` variable are set. Builds are expected to be local, per
+the *Build* section above.
+
 ## Other devices
 
 `manifest.xml` also lists `enduro2`, `fenix7`, `fenix7x` and `fr965`. Only
