@@ -189,3 +189,7 @@ seconds off in settings if you want the stock-face battery life back.
 downloaded in SDK Manager before they will build, and the fr965 in particular
 is a 454×454 AMOLED — the layout will scale but the font-height thresholds
 above should be re-checked before trusting it.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
