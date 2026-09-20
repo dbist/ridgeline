@@ -5,41 +5,109 @@ heart rate / steps / battery row, notification dot. Built for the Enduro 3's
 280×280 memory-in-pixel display (black background, no gradients — the things MIP
 actually renders well).
 
-See `preview.png` for the layout.
+![Ridgeline watch face](preview.svg)
+
+Verified on hardware: built with Connect IQ SDK 9.2.0, run in the Enduro 3
+simulator, side-loaded and applied on an Enduro 3.
 
 ## What you need (one-time, ~20 minutes)
 
-1. **Connect IQ SDK Manager** — https://developer.garmin.com/connect-iq/sdk/
-   Sign in with your Garmin account, install the latest SDK, then in the
-   *Devices* tab tick **Enduro 3** and download it.
-2. **VS Code** + the official **Monkey C** extension (publisher: Garmin).
-3. **Developer key** — in VS Code: `Ctrl/Cmd+Shift+P` →
-   `Monkey C: Generate a Developer Key`. Point the extension at the SDK when
-   prompted.
+1. **Connect IQ SDK Manager** — <https://developer.garmin.com/connect-iq/sdk/>
+   On macOS: `brew install --cask connectiq-sdk-manager`.
+
+   Installing the app is **not** the same as installing an SDK. Launch
+   `SdkManager.app`, sign in with your Garmin account, install the latest SDK
+   from the *SDK* tab, then in the *Devices* tab tick **Enduro 3** and download
+   it. Without that second step `monkeyc` fails on an unknown device id.
+
+   You can confirm both landed:
+
+       ls ~/Library/Application\ Support/Garmin/ConnectIQ/Sdks
+       ls ~/Library/Application\ Support/Garmin/ConnectIQ/Devices/enduro3
+
+2. **A developer key.** VS Code's `Monkey C: Generate a Developer Key` does
+   this, but the extension is not required — the key is an ordinary RSA key in
+   PKCS#8 DER:
+
+       mkdir -p ~/.garmin && cd ~/.garmin
+       openssl genrsa -out developer_key.pem 4096
+       openssl pkcs8 -topk8 -inform PEM -outform DER \
+         -in developer_key.pem -out developer_key.der -nocrypt
+       chmod 600 developer_key.*
+
+   Keep it outside the repo. It is the identity your builds are signed with and
+   must never be committed; `.gitignore` covers `*.der` as a backstop.
+
+3. **VS Code + the Monkey C extension** — optional. Useful for
+   `Monkey C: Edit Products` (which writes correct device ids into
+   `manifest.xml`) and for its debugger. Everything below uses the CLI instead.
 
 ## Build
 
-1. `File → Open Folder` → this `Ridgeline` folder.
-2. `Ctrl/Cmd+Shift+P` → `Monkey C: Build for Device` → choose **Enduro 3** →
-   pick an output folder. You get `Ridgeline.prg`.
+The SDK ships a `monkeyc` CLI, so no editor is needed:
 
-Optional sanity check first: `Monkey C: Run App` launches the simulator with the
-Enduro 3 skin so you can see it before it touches the watch.
+    SDK=$(cat ~/Library/Application\ Support/Garmin/ConnectIQ/current-sdk.cfg)
+    "$SDK/bin/monkeyc" \
+      -d enduro3 \
+      -f monkey.jungle \
+      -o build/Ridgeline.prg \
+      -y ~/.garmin/developer_key.der
 
-If "Enduro 3" doesn't appear in the device list, run
-`Monkey C: Edit Products` and add it there — that writes the correct device id
-into `manifest.xml` (this file guesses `enduro3`).
+Output lands in `build/` (git-ignored). Only `Ridgeline.prg` goes on the watch;
+`gen/`, `*-mir/`, `Ridgeline-settings.json` and `Ridgeline.prg.debug.xml` are
+build intermediates.
+
+To see it before it touches hardware:
+
+    "$SDK/bin/connectiq" &                          # launch the simulator
+    "$SDK/bin/monkeydo" build/Ridgeline.prg enduro3  # load the app into it
+
+`System.println()` output from the app appears on `monkeydo`'s stdout, which is
+the only practical way to read real font metrics and layout values back out —
+see *Layout notes* below.
+
+### Strict type checking
+
+`monkeyc -l 3` currently reports ~78 errors. Nearly all are missing type
+annotations (`Member 'x' is untyped`, then `Cannot determine type for method
+invocation` cascading from every `Any`). Three more are null-narrowing
+limitations: the checker will not follow `(x == null) ? 0 : x` or a `||`
+short-circuit, so `drawStepRing` and `drawMetrics` flag despite being safe.
+
+One is a genuine API wart worth knowing: `Gregorian.Info` declares `month` and
+`day_of_week` as `Number or String`, and they are only `String` under
+`FORMAT_MEDIUM`. `.toUpper()` on them therefore fails the strict checker.
+Verified correct at runtime — the face renders without throwing — but it is not
+provably safe from the types alone.
+
+The default type-check level builds clean.
 
 ## Install on the watch — no app store needed
 
-1. Connect the Enduro 3 by USB. It mounts as a drive.
-2. Copy `Ridgeline.prg` into **`GARMIN/APPS/`** on the watch.
-3. Safely eject, unplug. The watch re-indexes apps on disconnect.
+The Enduro 3 talks USB **MTP**, not mass storage — it will *not* appear in
+Finder as a drive, and macOS has no native MTP support. You need a transfer
+client first:
+
+    brew install --cask openmtp
+
+(Android File Transfer is the older answer, but it has been unmaintained for
+years and tends to fail on current macOS. On Linux, MTP works natively through
+gvfs and no extra client is needed.)
+
+1. Connect the Enduro 3 by USB and open OpenMTP. The watch shows up on the
+   device side of the split pane. If nothing appears, check the cable actually
+   carries data — Garmin's connector charges over charge-only cables while
+   never enumerating.
+2. Copy `build/Ridgeline.prg` into **`GARMIN/APPS/`** on the watch. Create
+   `APPS` if it is missing; it does not exist on a watch that has never had a
+   side-loaded app.
+3. Eject from OpenMTP, then unplug. The watch re-indexes apps on disconnect.
 4. On the watch: hold **UP/MENU** → *Watch Face* → scroll to **Ridgeline** →
    *Apply*.
 
 Side-loading skips Garmin's store review entirely. If you later want it on the
-store, that's a separate developer-account submission.
+store, that is a separate developer-account submission, and the placeholder
+app id in `manifest.xml` must be regenerated first.
 
 ## Settings
 
@@ -52,16 +120,64 @@ Editable from Garmin Connect (Connect IQ → Ridgeline → Settings):
 Side-loaded app settings occasionally don't sync. If so, just change the
 defaults in `resources/properties.xml` and rebuild.
 
+## Layout notes
+
+Layout is expressed in fractions of screen height so it scales across devices,
+but two things are **not** portable and caused real bugs:
+
+**Font heights are device-specific and larger than they look.** Measured on an
+Enduro 3 via `dc.getFontHeight()`:
+
+| Font                   | Height |
+| ---------------------- | -----: |
+| `FONT_NUMBER_THAI_HOT` |    129 |
+| `FONT_NUMBER_HOT`      |    107 |
+| `FONT_SMALL`           |     34 |
+| `FONT_TINY`            |     30 |
+| `FONT_XTINY`           |     22 |
+
+A consequence: `drawTime` prefers `FONT_NUMBER_THAI_HOT` but rejects it when it
+exceeds `h * 0.40` = 112px. At 129px it **always** exceeds that on the Enduro 3,
+so this device never uses it and always renders at `FONT_NUMBER_HOT`.
+
+**There is no room below the time.** With a 107px time font centred at
+`cy - h*0.05`, the digits end at y=179.5 and the metric rows begin at y=189.4 —
+about 15px of clearance, narrower than `FONT_XTINY` at 22px. No font fits
+there. Seconds therefore render in the *lower right of the time block*, not
+beneath it, and `drawTime` returns `[rightEdgeX, centreY, fontHeight]` so the
+placement measures the text actually drawn rather than assuming a width.
+
+**The bezel clips the corners of the lower rows.** The display is round, so
+usable width shrinks as you move away from centre. At the label row's baseline
+(y≈244) only x≈47–233 is on-screen, which is why the outer metric columns sit
+at `0.26`/`0.74` rather than `0.23`/`0.77`.
+
+Label placement is derived from `getFontHeight()` on both fonts rather than a
+second hardcoded fraction, so the gap survives whatever metrics a different
+device reports.
+
+To re-measure on another device, print from `onLayout(dc)` and read the values
+off `monkeydo` stdout — the SDK does not publish these per-device.
+
 ## Files
 
-- `source/RidgelineView.mc` — all the drawing. Layout is in fractions of screen
-  height, so tweaks are safe and it scales to other Garmin devices.
-- `source/RidgelineApp.mc` — entry point.
+- `source/RidgelineView.mc` — all the drawing.
+- `source/RidgelineApp.mc` — entry point, settings reload.
 - `manifest.xml` — app id, target devices, permissions.
 - `resources/` — strings, settings, launcher icon.
+- `preview.svg` — layout reference, generated from the real device metrics
+  above. Regenerate it if the layout changes.
 
 ## Battery note
 
 Seconds force a 1 Hz redraw while the wrist is raised; `onEnterSleep` drops back
 to once-a-minute. This is the normal cost of any seconds-displaying face — turn
 seconds off in settings if you want the stock-face battery life back.
+
+## Other devices
+
+`manifest.xml` also lists `enduro2`, `fenix7`, `fenix7x` and `fr965`. Only
+`enduro3` has been built and run. The other four need their device definitions
+downloaded in SDK Manager before they will build, and the fr965 in particular
+is a 454×454 AMOLED — the layout will scale but the font-height thresholds
+above should be re-checked before trusting it.

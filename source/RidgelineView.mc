@@ -63,9 +63,9 @@ class RidgelineView extends WatchUi.WatchFace {
         }
 
         drawDate(dc, cx, h);
-        var timeBottom = drawTime(dc, cx, cy, w, h);
+        var timeBox = drawTime(dc, cx, cy, w, h);
         if (mShowSecs && !mLowPower) {
-            drawSeconds(dc, cx, timeBottom);
+            drawSeconds(dc, timeBox, w);
         }
         drawMetrics(dc, w, h);
         drawNotificationDot(dc, cx, h);
@@ -111,7 +111,8 @@ class RidgelineView extends WatchUi.WatchFace {
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    // Returns the y coordinate of the bottom of the time block.
+    // Returns [rightEdgeX, centreY, fontHeight] for the time block, so the
+    // seconds can be placed against it without re-measuring.
     hidden function drawTime(dc, cx, cy, w, h) {
         var clock = System.getClockTime();
         var hour  = clock.hour;
@@ -133,23 +134,54 @@ class RidgelineView extends WatchUi.WatchFace {
         }
 
         var baseY = cy - (h * 0.05);
+        var textW = dc.getTextWidthInPixels(text, font);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, baseY, font, text,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        return baseY + (dc.getFontHeight(font) / 2);
+        return [ cx + (textW / 2), baseY, dc.getFontHeight(font) ];
     }
 
-    hidden function drawSeconds(dc, cx, topY) {
-        var secs = System.getClockTime().sec.format("%02d");
+    // Seconds sit in the lower right of the time block, not beneath it. On a
+    // 280px screen the time font is 107px tall and the metric rows start at
+    // 0.73*h, leaving ~15px of clear space below the digits -- smaller than
+    // FONT_XTINY. There is no font that fits there, so the seconds go beside
+    // the time instead.
+    hidden function drawSeconds(dc, timeBox, w) {
+        var secs   = System.getClockTime().sec.format("%02d");
+        var rightX = timeBox[0];
+        var baseY  = timeBox[1];
+        var timeH  = timeBox[2];
+
+        var font  = Graphics.FONT_TINY;
+        var secsW = dc.getTextWidthInPixels(secs, font);
+        var secsH = dc.getFontHeight(font);
+
+        // Bottom-align against the digits rather than centring on them.
+        var y = baseY + (timeH / 2) - (secsH / 2) - 6;
+
+        var x = rightX + 6;
+        if (x + secsW > w - 8) {
+            x = w - 8 - secsW;
+        }
+
         dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, topY + 2, Graphics.FONT_TINY, secs,
-            Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(x, y, font, secs,
+            Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     hidden function drawMetrics(dc, w, h) {
-        var valueY = h * 0.750;
-        var labelY = h * 0.822;
+        var valueFont = Graphics.FONT_TINY;
+        var labelFont = Graphics.FONT_XTINY;
+
+        // Stack the label under the value using the real font boxes rather
+        // than a second magic fraction. FONT_TINY and FONT_XTINY differ per
+        // device, and the old h*0.822 left the two rows touching at 280px.
+        var valueY = h * 0.730;
+        var labelY = valueY
+            + (dc.getFontHeight(valueFont) / 2)
+            + (dc.getFontHeight(labelFont) / 2)
+            + 3;
 
         var info = ActivityMonitor.getInfo();
         var steps = (info.steps == null) ? 0 : info.steps;
@@ -160,18 +192,23 @@ class RidgelineView extends WatchUi.WatchFace {
         var hr = currentHeartRate();
         var hrText = (hr == null) ? "--" : hr.format("%d");
 
-        drawColumn(dc, w * 0.23, valueY, labelY, hrText, "BPM", Graphics.COLOR_WHITE);
-        drawColumn(dc, w * 0.50, valueY, labelY, steps.format("%d"), "STEPS", Graphics.COLOR_WHITE);
-        drawColumn(dc, w * 0.77, valueY, labelY, battery.format("%d") + "%", "BATT", batteryColor);
+        // Outer columns sit at 0.26/0.74, not 0.23/0.77: this row is low
+        // enough that the round bezel clips text pushed further out.
+        drawColumn(dc, w * 0.26, valueY, labelY, hrText, "BPM",
+            Graphics.COLOR_WHITE, valueFont, labelFont);
+        drawColumn(dc, w * 0.50, valueY, labelY, steps.format("%d"), "STEPS",
+            Graphics.COLOR_WHITE, valueFont, labelFont);
+        drawColumn(dc, w * 0.74, valueY, labelY, battery.format("%d") + "%", "BATT",
+            batteryColor, valueFont, labelFont);
     }
 
-    hidden function drawColumn(dc, x, valueY, labelY, value, label, color) {
+    hidden function drawColumn(dc, x, valueY, labelY, value, label, color, valueFont, labelFont) {
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, valueY, Graphics.FONT_TINY, value,
+        dc.drawText(x, valueY, valueFont, value,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
         dc.setColor(LABEL_COLOR, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, labelY, Graphics.FONT_XTINY, label,
+        dc.drawText(x, labelY, labelFont, label,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 

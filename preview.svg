@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" width="280" height="280" role="img" aria-label="Ridgeline watch face, 10:19, Saturday 20 September">
+<title>Ridgeline on a Garmin Enduro 3 (280x280)</title>
+<circle cx="140.0" cy="140.0" r="140.0" fill="#000000"/>
+<circle cx="140.0" cy="140.0" r="135.0" fill="none" stroke="#333333" stroke-width="6"/>
+<path d="M 140.00 5.00 A 135.0 135.0 0 1 1 26.93 66.24" fill="none" stroke="#FF5500" stroke-width="6" stroke-linecap="butt"/>
+<circle cx="140.0" cy="32.2" r="4" fill="#FF5500"/>
+<text x="140.0" y="56.0" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">SAT&#160;&#160;20 SEP</text>
+<text x="140.0" y="126.0" font-family="Arial, Helvetica, sans-serif" font-size="75" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">10:19</text>
+<text x="239.8" y="158.5" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="bold" fill="#FF5500" text-anchor="start" dominant-baseline="central">42</text>
+<text x="72.8" y="204.4" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">62</text>
+<text x="72.8" y="233.4" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#555555" text-anchor="middle" dominant-baseline="central">BPM</text>
+<text x="140.0" y="204.4" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">8420</text>
+<text x="140.0" y="233.4" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#555555" text-anchor="middle" dominant-baseline="central">STEPS</text>
+<text x="207.2" y="204.4" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">84%</text>
+<text x="207.2" y="233.4" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="bold" fill="#555555" text-anchor="middle" dominant-baseline="central">BATT</text>
+</svg>
