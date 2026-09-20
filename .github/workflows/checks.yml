@@ -1,0 +1,91 @@
+name: checks
+
+# Static checks that need no Garmin credentials. See issue #1 for the tiering
+# rationale: the device build lives in build.yml and is gated on secrets.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install xmllint
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libxml2-utils
+
+      - name: XML and SVG are well-formed
+        run: |
+          set -euo pipefail
+          # tracked files only -- never local build output
+          mapfile -t files < <(git ls-files '*.xml' '*.svg')
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::no XML files found - check the find expression"
+            exit 1
+          fi
+          printf 'checking: %s\n' "${files[@]}"
+          xmllint --noout "${files[@]}"
+
+      - name: No key material or build output is tracked
+        run: |
+          set -euo pipefail
+          # .gitignore covers these, but `git add -f` walks straight past it and
+          # this repository is public.
+          pattern='\.(der|pem|key)$|developer_key|^build/|^bin/|\.prg$|\.iq$'
+          if git ls-files | grep -qE "$pattern"; then
+            echo "::error::key material or build output is tracked in git"
+            git ls-files | grep -E "$pattern"
+            exit 1
+          fi
+          echo "clean: no keys or build artifacts tracked"
+
+      - name: Relative links in Markdown resolve
+        run: |
+          set -euo pipefail
+          rc=0
+          # grep -H -o emits "file:](target)" -- split on a tab, not the colon,
+          # or the filename's own colon corrupts every target.
+          while IFS=$'\t' read -r f target; do
+            [ -z "${f:-}" ] && continue
+            dir=$(dirname "$f")
+            if [ ! -e "$dir/$target" ]; then
+              echo "::error file=$f::broken relative link: $target"
+              rc=1
+            else
+              echo "ok: $f -> $target"
+            fi
+          done < <(
+            grep -rHoE '\]\([^)#:]+\)' --include='*.md' . \
+              | sed -E 's/:\]\(/\t/; s/\)$//' || true
+          )
+          [ $rc -eq 0 ] && echo "all relative links resolve"
+          exit $rc
+
+      - name: Report placeholder application id
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          # Tracked in issue #2. Reported, not enforced, so this does not gate
+          # merges until the id is actually replaced.
+          id=$(grep -oE 'id="[a-f0-9]{32}"' manifest.xml | head -1 | cut -d'"' -f2)
+          if [ "$id" = "1dcc48ca1dc048d29a67cd386f9f9323" ]; then
+            echo "::warning file=manifest.xml::application id is still the scaffold placeholder (see issue #2)"
+          else
+            echo "application id has been regenerated: $id"
+          fi
+
+      - name: Manifest declares the products the README claims
+        run: |
+          set -euo pipefail
+          echo "products declared in manifest.xml:"
+          grep -oE '<iq:product id="[^"]+"' manifest.xml | cut -d'"' -f2 | sed 's/^/  /'
