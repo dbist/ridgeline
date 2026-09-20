@@ -166,6 +166,12 @@ off `monkeydo` stdout — the SDK does not publish these per-device.
 
 ![Layout reference with the step ring at 84%](preview.svg)
 
+## Contributing
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for
+what to include in a contribution, how to verify a build, and why CI does not
+compile the device binary.
+
 ## Files
 
 - `source/RidgelineView.mc` — all the drawing.
