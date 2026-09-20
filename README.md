@@ -5,10 +5,15 @@ heart rate / steps / battery row, notification dot. Built for the Enduro 3's
 280×280 memory-in-pixel display (black background, no gradients — the things MIP
 actually renders well).
 
-![Ridgeline watch face](preview.svg)
+![Ridgeline running in the Connect IQ Enduro 3 simulator](screenshot.png)
 
 Verified on hardware: built with Connect IQ SDK 9.2.0, run in the Enduro 3
-simulator, side-loaded and applied on an Enduro 3.
+simulator (above), side-loaded and applied on an Enduro 3.
+
+The step-goal ring is not visible in that capture because the simulator
+reports zero steps by default — at 0% `drawStepRing` draws only the dim
+track, which sits 5px inside the bezel. `preview.svg` below shows the ring
+at 84%.
 
 ## What you need (one-time, ~20 minutes)
 
@@ -159,14 +164,17 @@ device reports.
 To re-measure on another device, print from `onLayout(dc)` and read the values
 off `monkeydo` stdout — the SDK does not publish these per-device.
 
+![Layout reference with the step ring at 84%](preview.svg)
+
 ## Files
 
 - `source/RidgelineView.mc` — all the drawing.
 - `source/RidgelineApp.mc` — entry point, settings reload.
 - `manifest.xml` — app id, target devices, permissions.
 - `resources/` — strings, settings, launcher icon.
-- `preview.svg` — layout reference, generated from the real device metrics
-  above. Regenerate it if the layout changes.
+- `screenshot.png` — Enduro 3 simulator capture of the current layout.
+- `preview.svg` — layout reference drawn from the measured metrics above,
+  showing the step ring partway round. Regenerate if the layout changes.
 
 ## Battery note
 
