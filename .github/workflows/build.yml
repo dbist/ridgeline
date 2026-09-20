@@ -25,7 +25,7 @@ jobs:
     name: monkeyc (enduro3)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Determine whether this run can build
         id: gate
@@ -50,7 +50,7 @@ jobs:
 
       - name: Set up Go
         if: steps.gate.outputs.can_build == 'true'
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: stable
 
@@ -60,7 +60,7 @@ jobs:
 
       - name: Cache SDK and device definitions
         if: steps.gate.outputs.can_build == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.config/connect-iq-sdk-manager
           key: ciq-${{ env.CIQ_SDK_VERSION }}-${{ hashFiles('manifest.xml') }}
@@ -113,7 +113,7 @@ jobs:
 
       - name: Upload the build
         if: steps.gate.outputs.can_build == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Ridgeline-enduro3
           path: build/Ridgeline.prg
