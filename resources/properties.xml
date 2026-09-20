@@ -1,0 +1,5 @@
+<properties>
+    <property id="AccentColor" type="number">0xFF5500</property>
+    <property id="ShowSeconds" type="boolean">true</property>
+    <property id="ShowGoalRing" type="boolean">true</property>
+</properties>

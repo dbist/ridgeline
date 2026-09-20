@@ -1,0 +1,15 @@
+<strings>
+    <string id="AppName">Ridgeline</string>
+
+    <string id="AccentColorTitle">Accent colour</string>
+    <string id="ColorOrange">Orange</string>
+    <string id="ColorRed">Red</string>
+    <string id="ColorGreen">Green</string>
+    <string id="ColorBlue">Blue</string>
+    <string id="ColorYellow">Yellow</string>
+    <string id="ColorWhite">White</string>
+
+    <string id="ShowSecondsTitle">Show seconds (wrist raised)</string>
+    <string id="ShowGoalRingTitle">Step-goal ring</string>
+    <string id="MilitaryDateTitle">Show day number before month</string>
+</strings>
