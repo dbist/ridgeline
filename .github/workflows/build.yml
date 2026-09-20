@@ -1,0 +1,120 @@
+name: build
+
+# Tier 1 of issue #1: a real monkeyc build against a real device definition.
+#
+# The Connect IQ SDK ships NO device definitions -- they are a separate,
+# authenticated download -- so this job needs Garmin credentials to run at all.
+# Until GARMIN_USERNAME / GARMIN_PASSWORD are set as repository secrets it
+# reports that it is inactive and exits successfully, rather than failing on
+# every push or, worse, passing silently while checking nothing.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CIQ_SDK_VERSION: "9.2.0"
+
+jobs:
+  build:
+    name: monkeyc (enduro3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Determine whether this run can build
+        id: gate
+        env:
+          GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+        run: |
+          set -euo pipefail
+          # Forks never receive secrets. Say so loudly: a build job that is
+          # quietly inert looks identical to one that passed.
+          if [ "${{ github.event_name }}" = "pull_request" ] && \
+             [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "::notice::fork pull request - secrets are unavailable, device build skipped"
+            echo "can_build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "${GARMIN_USERNAME:-}" ]; then
+            echo "::notice::GARMIN_USERNAME is not set - device build inactive (see issue #1)"
+            echo "can_build=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "can_build=true" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Go
+        if: steps.gate.outputs.can_build == 'true'
+        uses: actions/setup-go@v7
+        with:
+          go-version: stable
+
+      - name: Install connect-iq-sdk-manager
+        if: steps.gate.outputs.can_build == 'true'
+        run: go install github.com/lindell/connect-iq-sdk-manager-cli@latest
+
+      - name: Cache SDK and device definitions
+        if: steps.gate.outputs.can_build == 'true'
+        uses: actions/cache@v6
+        with:
+          path: ~/.config/connect-iq-sdk-manager
+          key: ciq-${{ env.CIQ_SDK_VERSION }}-${{ hashFiles('manifest.xml') }}
+
+      - name: Fetch SDK and devices
+        if: steps.gate.outputs.can_build == 'true'
+        env:
+          GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          AGREEMENT_HASH: ${{ vars.CIQ_AGREEMENT_HASH }}
+        run: |
+          set -euo pipefail
+          connect-iq-sdk-manager login --agreement-hash "$AGREEMENT_HASH"
+          connect-iq-sdk-manager sdk set --version "$CIQ_SDK_VERSION"
+          connect-iq-sdk-manager device download --manifest manifest.xml
+          echo "$(connect-iq-sdk-manager sdk current-path)/bin" >> "$GITHUB_PATH"
+
+      - name: Generate a throwaway signing key
+        if: steps.gate.outputs.can_build == 'true'
+        run: |
+          set -euo pipefail
+          # Side-loaded builds do not need a stable signing identity; only a
+          # store submission does. The real developer key never reaches CI.
+          openssl genrsa -out ci_key.pem 4096 2>/dev/null
+          openssl pkcs8 -topk8 -inform PEM -outform DER \
+            -in ci_key.pem -out ci_key.der -nocrypt
+
+      - name: Build for enduro3
+        if: steps.gate.outputs.can_build == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          monkeyc -d enduro3 -f monkey.jungle \
+            -o build/Ridgeline.prg -y ci_key.der
+
+      - name: Type check (report only)
+        if: steps.gate.outputs.can_build == 'true'
+        continue-on-error: true
+        run: |
+          # ~78 errors today, nearly all missing type annotations. Reported so
+          # the count is visible and can be driven down, not enforced -- see
+          # the strict type checking section of the README.
+          monkeyc -d enduro3 -f monkey.jungle \
+            -o /tmp/strict.prg -y ci_key.der -l 3 2>&1 | tee strict.log || true
+          echo "strict-mode findings: $(grep -c '^ERROR' strict.log || echo 0)"
+
+      - name: Remove the signing key before archiving
+        if: always() && steps.gate.outputs.can_build == 'true'
+        run: rm -f ci_key.pem ci_key.der
+
+      - name: Upload the build
+        if: steps.gate.outputs.can_build == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: Ridgeline-enduro3
+          path: build/Ridgeline.prg
+          if-no-files-found: error
