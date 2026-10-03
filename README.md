@@ -15,7 +15,18 @@ reports zero steps by default — at 0% `drawStepRing` draws only the dim
 track, which sits 5px inside the bezel. `preview.svg` below shows the ring
 at 84%.
 
-## What you need (one-time, ~20 minutes)
+## Install without building
+
+You do not need the SDK just to wear it. Each
+[release](https://github.com/dbist/ridgeline/releases/latest) has a prebuilt
+`Ridgeline.prg` for the Enduro 3 attached — download it and follow
+*Install on the watch* below, using the downloaded file in place of
+`build/Ridgeline.prg`.
+
+*What you need to build* and *Build* below are only for changing the face or
+building it yourself.
+
+## What you need to build (one-time, ~20 minutes)
 
 1. **Connect IQ SDK Manager** — <https://developer.garmin.com/connect-iq/sdk/>
    On macOS: `brew install --cask connectiq-sdk-manager`.
