@@ -6,7 +6,7 @@
 <iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
     <iq:application
         entry="RidgelineApp"
-        id="1dcc48ca1dc048d29a67cd386f9f9323"
+        id="bbb69eafd1404928add10fdbd6cbce40"
         launcherIcon="@Drawables.LauncherIcon"
         minApiLevel="3.1.0"
         name="@Strings.AppName"
@@ -14,10 +14,6 @@
 
         <iq:products>
             <iq:product id="enduro3"/>
-            <iq:product id="enduro2"/>
-            <iq:product id="fenix7"/>
-            <iq:product id="fenix7x"/>
-            <iq:product id="fr965"/>
         </iq:products>
 
         <iq:permissions>

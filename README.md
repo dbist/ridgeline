@@ -15,7 +15,18 @@ reports zero steps by default — at 0% `drawStepRing` draws only the dim
 track, which sits 5px inside the bezel. `preview.svg` below shows the ring
 at 84%.
 
-## What you need (one-time, ~20 minutes)
+## Install without building
+
+You do not need the SDK just to wear it. Each
+[release](https://github.com/dbist/ridgeline/releases/latest) has a prebuilt
+`Ridgeline.prg` for the Enduro 3 attached — download it and follow
+*Install on the watch* below, using the downloaded file in place of
+`build/Ridgeline.prg`.
+
+*What you need to build* and *Build* below are only for changing the face or
+building it yourself.
+
+## What you need to build (one-time, ~20 minutes)
 
 1. **Connect IQ SDK Manager** — <https://developer.garmin.com/connect-iq/sdk/>
    On macOS: `brew install --cask connectiq-sdk-manager`.
@@ -110,9 +121,15 @@ gvfs and no extra client is needed.)
 4. On the watch: hold **UP/MENU** → *Watch Face* → scroll to **Ridgeline** →
    *Apply*.
 
-Side-loading skips Garmin's store review entirely. If you later want it on the
-store, that is a separate developer-account submission, and the placeholder
-app id in `manifest.xml` must be regenerated first.
+Side-loading skips Garmin's store review entirely. A store listing would be a
+separate developer-account submission.
+
+**Upgrading from a build older than v1.0.0 resets your settings.** The
+application id in `manifest.xml` was regenerated for v1.0.0, and the watch keys
+stored settings by that id, so it treats v1.0.0 as a different app. Accent
+colour, seconds and ring settings revert to their defaults, and the old build
+may stay listed as a second *Ridgeline* until you delete its `.prg` from
+`GARMIN/APPS/`. The id will not change again.
 
 ## Settings
 
@@ -121,6 +138,12 @@ Editable from Garmin Connect (Connect IQ → Ridgeline → Settings):
 - Accent colour (orange / red / green / blue / yellow / white)
 - Seconds on wrist-raise (off saves battery)
 - Step-goal ring on/off
+
+The ring fills in the accent colour until you reach the step goal. Past the
+goal, each further multiple of it is a lap in its own colour — light green,
+then blue, then purple, then repeating — sweeping over the completed lap. A
+lap colour that matches your accent is skipped, so the first lap past the goal
+always looks different from the progress towards it.
 
 Side-loaded app settings occasionally don't sync. If so, just change the
 defaults in `resources/properties.xml` and rebuild.
@@ -207,11 +230,14 @@ the *Build* section above.
 
 ## Other devices
 
-`manifest.xml` also lists `enduro2`, `fenix7`, `fenix7x` and `fr965`. Only
-`enduro3` has been built and run. The other four need their device definitions
-downloaded in SDK Manager before they will build, and the fr965 in particular
-is a 454×454 AMOLED — the layout will scale but the font-height thresholds
-above should be re-checked before trusting it.
+Ridgeline supports the Enduro 3 only, and `manifest.xml` lists no other
+products. Earlier builds also claimed `enduro2`, `fenix7`, `fenix7x` and
+`fr965`, but none of them had ever been built, so the claim was dropped.
+
+Porting to another watch means adding its product id, building it, and
+re-measuring the font heights and bezel clearance described in *Layout notes*
+— the fr965, for instance, is a 454×454 AMOLED where the `h * 0.40` font
+threshold may take the other branch.
 
 ## License
 
