@@ -207,11 +207,14 @@ the *Build* section above.
 
 ## Other devices
 
-`manifest.xml` also lists `enduro2`, `fenix7`, `fenix7x` and `fr965`. Only
-`enduro3` has been built and run. The other four need their device definitions
-downloaded in SDK Manager before they will build, and the fr965 in particular
-is a 454×454 AMOLED — the layout will scale but the font-height thresholds
-above should be re-checked before trusting it.
+Ridgeline supports the Enduro 3 only, and `manifest.xml` lists no other
+products. Earlier builds also claimed `enduro2`, `fenix7`, `fenix7x` and
+`fr965`, but none of them had ever been built, so the claim was dropped.
+
+Porting to another watch means adding its product id, building it, and
+re-measuring the font heights and bezel clearance described in *Layout notes*
+— the fr965, for instance, is a 454×454 AMOLED where the `h * 0.40` font
+threshold may take the other branch.
 
 ## License
 

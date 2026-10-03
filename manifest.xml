@@ -14,10 +14,6 @@
 
         <iq:products>
             <iq:product id="enduro3"/>
-            <iq:product id="enduro2"/>
-            <iq:product id="fenix7"/>
-            <iq:product id="fenix7x"/>
-            <iq:product id="fr965"/>
         </iq:products>
 
         <iq:permissions>
