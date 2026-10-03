@@ -11,4 +11,5 @@ developer_key*
 
 # Editor
 .vscode/
+*.code-workspace
 .DS_Store
