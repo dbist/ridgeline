@@ -128,6 +128,12 @@ Editable from Garmin Connect (Connect IQ → Ridgeline → Settings):
 - Seconds on wrist-raise (off saves battery)
 - Step-goal ring on/off
 
+The ring fills in the accent colour until you reach the step goal. Past the
+goal, each further multiple of it is a lap in its own colour — light green,
+then blue, then purple, then repeating — sweeping over the completed lap. A
+lap colour that matches your accent is skipped, so the first lap past the goal
+always looks different from the progress towards it.
+
 Side-loaded app settings occasionally don't sync. If so, just change the
 defaults in `resources/properties.xml` and rebuild.
 

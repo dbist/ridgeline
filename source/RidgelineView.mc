@@ -14,10 +14,15 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden const DIM_COLOR   = 0x333333;
     hidden const LOW_BATTERY = 0xFF0000;
 
+    // Step-ring colours for each multiple of the goal past the first: light
+    // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
+    hidden const LAP_COLORS  = [0x55FF55, 0x00AAFF, 0xAA55FF];
+
     hidden var mLowPower  = false;
     hidden var mAccent    = 0xFF5500;
     hidden var mShowSecs  = true;
     hidden var mShowRing  = true;
+    hidden var mLapColors = LAP_COLORS;
 
     function initialize() {
         WatchFace.initialize();
@@ -31,6 +36,15 @@ class RidgelineView extends WatchUi.WatchFace {
         mAccent   = getSetting("AccentColor", 0xFF5500);
         mShowSecs = getSetting("ShowSeconds", true);
         mShowRing = getSetting("ShowGoalRing", true);
+
+        // Drop a lap colour that matches the accent, or the first lap past the
+        // goal would look identical to the progress towards it.
+        mLapColors = [];
+        for (var i = 0; i < LAP_COLORS.size(); i++) {
+            if (LAP_COLORS[i] != mAccent) {
+                mLapColors.add(LAP_COLORS[i]);
+            }
+        }
     }
 
     hidden function getSetting(key, fallback) {
@@ -86,16 +100,34 @@ class RidgelineView extends WatchUi.WatchFace {
             return;
         }
 
-        dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
-        if (pct >= 1.0) {
+        // Each full multiple of the goal is a lap. A completed lap stays as a
+        // full circle in its own colour; the next lap sweeps over it.
+        var lap  = pct.toNumber();
+        var frac = pct - lap;
+
+        if (lap > 0) {
+            dc.setColor(ringColor(lap - 1), Graphics.COLOR_TRANSPARENT);
             dc.drawCircle(cx, cy, radius);
+        }
+
+        if (frac <= 0.0) {
             return;
         }
 
         // 90 degrees is 12 o'clock; sweep clockwise.
-        var endDeg = 90 - (360.0 * pct);
+        dc.setColor(ringColor(lap), Graphics.COLOR_TRANSPARENT);
+        var endDeg = 90 - (360.0 * frac);
         while (endDeg < 0) { endDeg += 360; }
         dc.drawArc(cx, cy, radius, Graphics.ARC_CLOCKWISE, 90, endDeg.toNumber());
+    }
+
+    // Lap 0 (working towards the goal) is the accent; every lap past the goal
+    // cycles through mLapColors.
+    hidden function ringColor(lap) {
+        if (lap == 0) {
+            return mAccent;
+        }
+        return mLapColors[(lap - 1) % mLapColors.size()];
     }
 
     hidden function drawDate(dc, cx, h) {
