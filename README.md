@@ -110,9 +110,15 @@ gvfs and no extra client is needed.)
 4. On the watch: hold **UP/MENU** → *Watch Face* → scroll to **Ridgeline** →
    *Apply*.
 
-Side-loading skips Garmin's store review entirely. If you later want it on the
-store, that is a separate developer-account submission, and the placeholder
-app id in `manifest.xml` must be regenerated first.
+Side-loading skips Garmin's store review entirely. A store listing would be a
+separate developer-account submission.
+
+**Upgrading from a build older than v1.0.0 resets your settings.** The
+application id in `manifest.xml` was regenerated for v1.0.0, and the watch keys
+stored settings by that id, so it treats v1.0.0 as a different app. Accent
+colour, seconds and ring settings revert to their defaults, and the old build
+may stay listed as a second *Ridgeline* until you delete its `.prg` from
+`GARMIN/APPS/`. The id will not change again.
 
 ## Settings
 

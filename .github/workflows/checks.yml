@@ -71,18 +71,17 @@ jobs:
           [ $rc -eq 0 ] && echo "all relative links resolve"
           exit $rc
 
-      - name: Report placeholder application id
-        continue-on-error: true
+      - name: Application id is not the scaffold placeholder
         run: |
           set -euo pipefail
-          # Tracked in issue #2. Reported, not enforced, so this does not gate
-          # merges until the id is actually replaced.
+          # Issue #2: the scaffold id is public and burned. Released builds
+          # carry a regenerated one, and the scaffold id must not come back.
           id=$(grep -oE 'id="[a-f0-9]{32}"' manifest.xml | head -1 | cut -d'"' -f2)
           if [ "$id" = "1dcc48ca1dc048d29a67cd386f9f9323" ]; then
-            echo "::warning file=manifest.xml::application id is still the scaffold placeholder (see issue #2)"
-          else
-            echo "application id has been regenerated: $id"
+            echo "::error file=manifest.xml::application id is the scaffold placeholder (see issue #2)"
+            exit 1
           fi
+          echo "application id: $id"
 
       - name: Manifest declares the products the README claims
         run: |
