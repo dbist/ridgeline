@@ -238,23 +238,28 @@ class RidgelineView extends WatchUi.WatchFace {
             batteryColor, valueFont, labelFont);
 
         if (charging) {
-            var boltX = (w * 0.74) + (dc.getTextWidthInPixels(battText, valueFont) / 2) + 3;
-            drawChargingBolt(dc, boltX.toNumber(), valueY.toNumber());
+            var fontH = dc.getFontHeight(valueFont);
+            var boltX = (w * 0.74) + (dc.getTextWidthInPixels(battText, valueFont) / 2) + (fontH * 0.1);
+            drawChargingBolt(dc, boltX, valueY, fontH);
         }
     }
 
-    // A 9x16 lightning bolt, left edge at x and vertically centred on y,
-    // drawn just right of the battery value while the watch is charging.
-    hidden function drawChargingBolt(dc, x, y) {
+    // A lightning bolt, left edge at x and vertically centred on y, drawn
+    // just right of the battery value while the watch is charging. The shape
+    // is in units of 1/30 of the value font's height: about 0.3 x 0.53 of it,
+    // which is 9x16px with the Enduro 3's 30px FONT_TINY.
+    hidden function drawChargingBolt(dc, x, y, fontH) {
+        var k = fontH / 30.0;
+        var shape = [[5, -8], [0, 1], [4, 1], [3, 8], [9, -1], [5, -1]];
+        var pts = [];
+        for (var i = 0; i < shape.size(); i++) {
+            pts.add([
+                (x + (shape[i][0] * k)).toNumber(),
+                (y + (shape[i][1] * k)).toNumber()
+            ]);
+        }
         dc.setColor(CHARGING_COLOR, Graphics.COLOR_TRANSPARENT);
-        dc.fillPolygon([
-            [x + 5, y - 8],
-            [x,     y + 1],
-            [x + 4, y + 1],
-            [x + 3, y + 8],
-            [x + 9, y - 1],
-            [x + 5, y - 1]
-        ]);
+        dc.fillPolygon(pts);
     }
 
     hidden function drawColumn(dc, x, valueY, labelY, value, label, color, valueFont, labelFont) {
