@@ -89,37 +89,30 @@ class RidgelineView extends WatchUi.WatchFace {
         var info    = ActivityMonitor.getInfo();
         var steps   = (info.steps == null) ? 0 : info.steps;
         var goal    = (info.stepGoal == null || info.stepGoal <= 0) ? 10000 : info.stepGoal;
-        var pct     = steps.toFloat() / goal.toFloat();
         var radius  = (w / 2) - 5;
 
         dc.setPenWidth(6);
         dc.setColor(DIM_COLOR, Graphics.COLOR_TRANSPARENT);
         dc.drawCircle(cx, cy, radius);
 
-        if (pct <= 0.0) {
-            return;
-        }
-
-        // Each full multiple of the goal is a lap. A completed lap stays as a
-        // full circle in its own colour; the next lap sweeps over it.
-        var lap  = pct.toNumber();
-        var frac = pct - lap;
+        // A completed lap stays as a full circle in its own colour; the next
+        // lap sweeps over it. The maths is in RidgelineRing.mc, with tests.
+        var seg   = RidgelineRing.segments(steps, goal);
+        var lap   = seg[0];
+        var sweep = seg[1];
 
         if (lap > 0) {
             dc.setColor(ringColor(lap - 1), Graphics.COLOR_TRANSPARENT);
             dc.drawCircle(cx, cy, radius);
         }
 
-        // drawArc truncates angles and draws a full circle when they match,
-        // so keep the sweep an integer in 1..359.
-        var sweep = (360.0 * frac).toNumber();
         if (sweep < 1) {
             return;
         }
 
         // 90 degrees is 12 o'clock; sweep clockwise.
         dc.setColor(ringColor(lap), Graphics.COLOR_TRANSPARENT);
-        dc.drawArc(cx, cy, radius, Graphics.ARC_CLOCKWISE, 90, (90 - sweep + 360) % 360);
+        dc.drawArc(cx, cy, radius, Graphics.ARC_CLOCKWISE, 90, RidgelineRing.endAngle(sweep));
     }
 
     // Lap 0 (working towards the goal) is the accent; every lap past the goal

@@ -10,6 +10,17 @@ The README already covers one-time SDK setup, building, and installing on the
 watch. Before you open a PR, follow those steps from a clean clone and confirm
 that `monkeyc` builds the `.prg` successfully.
 
+## Running the unit tests
+
+The step-ring maths has `(:test)` cases in `source/RidgelineRingTests.mc`.
+They run in the simulator, not in CI. Start the simulator (`connectiq`), then:
+
+    monkeyc -d enduro3 -f monkey.jungle -y ~/.garmin/developer_key.der \
+      -t -o build/RidgelineTest.prg
+    monkeydo build/RidgelineTest.prg enduro3 -t
+
+`(:test)` code is left out of normal builds, so it never ships in the `.prg`.
+
 ## What to include in a pull request
 
 1. **It builds.** The PR should leave `monkeyc` able to produce the device
