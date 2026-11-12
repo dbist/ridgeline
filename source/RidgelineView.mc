@@ -14,7 +14,6 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden const DIM_COLOR   = 0x333333;
     hidden const LOW_BATTERY = 0xFF0000;
     hidden const LABEL_COLOR_BRIGHT = 0xAAAAAA;
-    hidden const MERIDIEM_INSET = 14;
 
     // Step-ring colours for each multiple of the goal past the first: light
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
@@ -190,9 +189,10 @@ class RidgelineView extends WatchUi.WatchFace {
         var textW = dc.getTextWidthInPixels(text, font);
         var textH = dc.getFontHeight(font);
 
-        // Number fonts carry empty space above the digits; MERIDIEM_INSET
-        // drops the label onto the top of the glyphs instead of the box.
-        var y = baseY - (timeH / 2) + (textH / 2) + MERIDIEM_INSET;
+        // Number fonts carry empty space above the digits. Dropping by 0.13
+        // of the time font's height puts the label on the top of the glyphs
+        // instead of the box (14px of FONT_NUMBER_HOT's 107px on the Enduro 3).
+        var y = baseY - (timeH / 2) + (textH / 2) + (timeH * 0.13);
 
         var x = rightX + 6;
         if (x + textW > w - 8) {
