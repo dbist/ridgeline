@@ -86,5 +86,12 @@ jobs:
       - name: Manifest declares the products the README claims
         run: |
           set -euo pipefail
-          echo "products declared in manifest.xml:"
-          grep -oE '<iq:product id="[^"]+"' manifest.xml | cut -d'"' -f2 | sed 's/^/  /'
+          # The README, release asset and build.yml all target the Enduro 3
+          # only. Fail if the manifest drifts from that, so the check can fail.
+          expected="enduro3"
+          actual=$(grep -oE '<iq:product id="[^"]+"' manifest.xml | cut -d'"' -f2 | sort | paste -sd' ' -)
+          echo "products declared in manifest.xml: ${actual:-<none>}"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error file=manifest.xml::products are '${actual:-<none>}', expected exactly '$expected' (update the README and build.yml too if this is intentional)"
+            exit 1
+          fi
