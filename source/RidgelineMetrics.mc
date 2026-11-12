@@ -4,6 +4,9 @@ using Toybox.Graphics;
 using Toybox.Lang;
 using Toybox.SensorHistory;
 using Toybox.System;
+using Toybox.Time;
+using Toybox.Time.Gregorian;
+using Toybox.Weather;
 
 // The metrics a column can show (issue #20), and how to read each one.
 //
@@ -20,6 +23,14 @@ module RidgelineMetrics {
     const CALORIES     = 5;
     const FLOORS       = 6;
     const INTENSITY    = 7;
+    // Enduro 3 data (issue #19).
+    const SOLAR        = 8;
+    const BATTERY_DAYS = 9;
+    const SUN_EVENT    = 10;
+    const ALTITUDE     = 11;
+    const LAST_ID      = ALTITUDE;
+
+    const SOLAR_COLOR  = 0xFFAA00;
 
     const COLUMN_KEYS     = ["LeftMetric", "MiddleMetric", "RightMetric"];
     const COLUMN_DEFAULTS = [HEART_RATE, STEPS, BATTERY];
@@ -29,7 +40,7 @@ module RidgelineMetrics {
     // Picker order: what the menu lists, top to bottom.
     function ids() as Lang.Array<Lang.Number> {
         return [HEART_RATE, STEPS, BATTERY, BODY_BATTERY, STRESS, CALORIES,
-                FLOORS, INTENSITY];
+                FLOORS, INTENSITY, SOLAR, BATTERY_DAYS, SUN_EVENT, ALTITUDE];
     }
 
     function names() as Lang.Array<Lang.ResourceId> {
@@ -37,7 +48,9 @@ module RidgelineMetrics {
             Rez.Strings.MetricHeartRate, Rez.Strings.MetricSteps,
             Rez.Strings.MetricBattery, Rez.Strings.MetricBodyBattery,
             Rez.Strings.MetricStress, Rez.Strings.MetricCalories,
-            Rez.Strings.MetricFloors, Rez.Strings.MetricIntensity
+            Rez.Strings.MetricFloors, Rez.Strings.MetricIntensity,
+            Rez.Strings.MetricSolar, Rez.Strings.MetricBatteryDays,
+            Rez.Strings.MetricSunEvent, Rez.Strings.MetricAltitude
         ];
     }
 
@@ -47,7 +60,7 @@ module RidgelineMetrics {
     }
 
     function isValid(id) as Lang.Boolean {
-        return (id instanceof Lang.Number) && id >= 0 && id <= INTENSITY;
+        return (id instanceof Lang.Number) && id >= 0 && id <= LAST_ID;
     }
 
     // Labels are at most five characters. At the label row the screen is
@@ -111,7 +124,102 @@ module RidgelineMetrics {
             var week = (info has :activeMinutesWeek) ? info.activeMinutesWeek : null;
             return [fmt((week == null) ? null : week.total), "INTNS", white];
         }
+        if (id == SOLAR) {
+            // Solar input now, 0-100 %. Gold so it reads as sunlight.
+            var stats = System.getSystemStats();
+            var sun = (stats has :solarIntensity) ? stats.solarIntensity : null;
+            if (sun != null && sun < 0) { sun = null; }
+            return [(sun == null) ? "--" : sun.format("%d") + "%", "SOLAR", SOLAR_COLOR];
+        }
+        if (id == BATTERY_DAYS) {
+            var stats = System.getSystemStats();
+            var days = (stats has :batteryInDays) ? stats.batteryInDays : null;
+            return [fmt(days), "DAYS", white];
+        }
+        if (id == SUN_EVENT) {
+            return sunEvent();
+        }
+        if (id == ALTITUDE) {
+            return [fmt(altitude()), "ALT", white];
+        }
         return ["--", "", white];
+    }
+
+    // Next sunrise or sunset, whichever comes first: ["6:58", "RISE", white]
+    // or ["16:41", "SET", white]. Needs a location, from the last weather
+    // observation or else the last activity fix; "--" without one.
+    function sunEvent() as Lang.Array {
+        var white = Graphics.COLOR_WHITE;
+        var none  = ["--", "RISE", white];
+        if (!(Toybox has :Weather) || !(Weather has :getSunrise)) {
+            return none;
+        }
+        var loc = location();
+        if (loc == null) {
+            return none;
+        }
+
+        var now   = Time.now();
+        var today = Time.today();
+        var rise  = Weather.getSunrise(loc, today);
+        var set   = Weather.getSunset(loc, today);
+        if (rise != null && now.lessThan(rise)) {
+            return [clock(rise), "RISE", white];
+        }
+        if (set != null && now.lessThan(set)) {
+            return [clock(set), "SET", white];
+        }
+        var tomorrow = today.add(new Time.Duration(Gregorian.SECONDS_PER_DAY));
+        rise = Weather.getSunrise(loc, tomorrow);
+        return (rise == null) ? none : [clock(rise), "RISE", white];
+    }
+
+    function location() {
+        if (Toybox has :Weather) {
+            var cond = Weather.getCurrentConditions();
+            if (cond != null && cond.observationLocationPosition != null) {
+                return cond.observationLocationPosition;
+            }
+        }
+        var activity = Activity.getActivityInfo();
+        return (activity == null) ? null : activity.currentLocation;
+    }
+
+    // "16:41" in 24-hour mode, "4:41" in 12-hour mode (no AM/PM: RISE and
+    // SET already say which half of the day it is).
+    function clock(moment as Time.Moment) as Lang.String {
+        var t = Gregorian.info(moment, Time.FORMAT_SHORT);
+        var hour = t.hour;
+        if (!System.getDeviceSettings().is24Hour) {
+            hour = hour % 12;
+            if (hour == 0) { hour = 12; }
+        }
+        return hour.format("%d") + ":" + t.min.format("%02d");
+    }
+
+    // Altitude in the watch's elevation units: metres, or feet for statute.
+    function altitude() {
+        var metres = null;
+        var activity = Activity.getActivityInfo();
+        if (activity != null && activity.altitude != null) {
+            metres = activity.altitude;
+        } else if ((Toybox has :SensorHistory) && (SensorHistory has :getElevationHistory)) {
+            try {
+                var iter = SensorHistory.getElevationHistory(
+                    { :period => 1, :order => SensorHistory.ORDER_NEWEST_FIRST });
+                var sample = (iter == null) ? null : iter.next();
+                metres = (sample == null) ? null : sample.data;
+            } catch (e) {
+                metres = null;
+            }
+        }
+        if (metres == null) {
+            return null;
+        }
+        if (System.getDeviceSettings().elevationUnits == System.UNIT_STATUTE) {
+            return metres * 3.28084;
+        }
+        return metres;
     }
 
     function fmt(value) as Lang.String {

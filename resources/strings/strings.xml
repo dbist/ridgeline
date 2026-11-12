@@ -24,4 +24,8 @@
     <string id="MetricCalories">Calories</string>
     <string id="MetricFloors">Floors climbed</string>
     <string id="MetricIntensity">Intensity minutes</string>
+    <string id="MetricSolar">Solar intensity</string>
+    <string id="MetricBatteryDays">Battery days left</string>
+    <string id="MetricSunEvent">Next sunrise/sunset</string>
+    <string id="MetricAltitude">Altitude</string>
 </strings>

@@ -4,7 +4,8 @@
     <property id="ShowGoalRing" type="boolean">true</property>
     <!-- Metric ids from RidgelineMetrics.mc: 0 heart rate, 1 steps,
          2 battery, 3 Body Battery, 4 stress, 5 calories, 6 floors,
-         7 intensity minutes. Append-only; never renumber. -->
+         7 intensity minutes, 8 solar, 9 battery days, 10 next sunrise or
+         sunset, 11 altitude. Append-only; never renumber. -->
     <property id="LeftMetric" type="number">0</property>
     <property id="MiddleMetric" type="number">1</property>
     <property id="RightMetric" type="number">2</property>
