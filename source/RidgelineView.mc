@@ -272,7 +272,8 @@ class RidgelineView extends WatchUi.WatchFace {
                 }
             }
         } catch (e) {
-            // SensorHistory unavailable on this device.
+            // Heart-rate history unavailable on this device. ActivityMonitor
+            // history needs no manifest permission (unlike Toybox.SensorHistory).
         }
 
         return null;
