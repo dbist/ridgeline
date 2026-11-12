@@ -13,6 +13,7 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden const LABEL_COLOR = 0x555555;
     hidden const DIM_COLOR   = 0x333333;
     hidden const LOW_BATTERY = 0xFF0000;
+    hidden const CHARGING_COLOR = 0x55FF55;
 
     // Step-ring colours for each multiple of the goal past the first: light
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
@@ -218,8 +219,10 @@ class RidgelineView extends WatchUi.WatchFace {
         var info = ActivityMonitor.getInfo();
         var steps = (info.steps == null) ? 0 : info.steps;
 
-        var battery = System.getSystemStats().battery;
+        var stats = System.getSystemStats();
+        var battery = stats.battery;
         var batteryColor = (battery <= 15) ? LOW_BATTERY : Graphics.COLOR_WHITE;
+        var charging = (stats has :charging) && (stats.charging == true);
 
         var hr = currentHeartRate();
         var hrText = (hr == null) ? "--" : hr.format("%d");
@@ -230,8 +233,28 @@ class RidgelineView extends WatchUi.WatchFace {
             Graphics.COLOR_WHITE, valueFont, labelFont);
         drawColumn(dc, w * 0.50, valueY, labelY, steps.format("%d"), "STEPS",
             Graphics.COLOR_WHITE, valueFont, labelFont);
-        drawColumn(dc, w * 0.74, valueY, labelY, battery.format("%d") + "%", "BATT",
+        var battText = battery.format("%d") + "%";
+        drawColumn(dc, w * 0.74, valueY, labelY, battText, "BATT",
             batteryColor, valueFont, labelFont);
+
+        if (charging) {
+            var boltX = (w * 0.74) + (dc.getTextWidthInPixels(battText, valueFont) / 2) + 3;
+            drawChargingBolt(dc, boltX.toNumber(), valueY.toNumber());
+        }
+    }
+
+    // A 9x16 lightning bolt, left edge at x and vertically centred on y,
+    // drawn just right of the battery value while the watch is charging.
+    hidden function drawChargingBolt(dc, x, y) {
+        dc.setColor(CHARGING_COLOR, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon([
+            [x + 5, y - 8],
+            [x,     y + 1],
+            [x + 4, y + 1],
+            [x + 3, y + 8],
+            [x + 9, y - 1],
+            [x + 5, y - 1]
+        ]);
     }
 
     hidden function drawColumn(dc, x, valueY, labelY, value, label, color, valueFont, labelFont) {
