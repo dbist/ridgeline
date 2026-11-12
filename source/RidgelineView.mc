@@ -24,6 +24,9 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden var mShowRing  = true;
     hidden var mLapColors = LAP_COLORS;
     hidden var mColumns as Lang.Array<Lang.Number> = RidgelineMetrics.COLUMN_DEFAULTS;
+    // Tap targets for the metric columns, from the last onUpdate:
+    // [[left, top, right, bottom, complicationType or null], ...].
+    hidden var mHitBoxes as Lang.Array = [];
 
     function initialize() {
         WatchFace.initialize();
@@ -248,12 +251,32 @@ class RidgelineView extends WatchUi.WatchFace {
             places = placeColumns(dc, cols, xs, left, right, 3, valueFont, labelFont);
         }
 
+        // Each column's tap target is a third of the row wide (finger-sized,
+        // not text-sized) and spans the value and label lines.
+        var top    = valueY - (dc.getFontHeight(valueFont) / 2);
+        var bottom = labelY + (dc.getFontHeight(labelFont) / 2);
+        var halfW  = (w * 0.24) / 2;
+        mHitBoxes = [];
+
         for (var i = 0; i < cols.size(); i++) {
             var m = cols[i] as Lang.Array;
             var p = (places as Lang.Array)[i] as Lang.Array;
             drawColumn(dc, p[0], valueY, labelY, p[1], m[1], m[2],
                 valueFont, labelFont);
+            mHitBoxes.add([p[0] - halfW, top, p[0] + halfW, bottom,
+                RidgelineMetrics.complicationType(mColumns[i], m[1] as Lang.String)]);
         }
+    }
+
+    // The complication behind the metric column at (x, y), or null.
+    function complicationAt(x, y) {
+        for (var i = 0; i < mHitBoxes.size(); i++) {
+            var b = mHitBoxes[i] as Lang.Array;
+            if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) {
+                return b[4];
+            }
+        }
+        return null;
     }
 
     // Positions each column, using value text index 0 (full) or 3 (compact)

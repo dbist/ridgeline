@@ -19,6 +19,8 @@
         <iq:permissions>
             <!-- Body Battery and stress history (RidgelineMetrics.latest). -->
             <iq:uses-permission id="SensorHistory"/>
+            <!-- Tap a metric to open its native widget (Complications.exitTo). -->
+            <iq:uses-permission id="ComplicationSubscriber"/>
         </iq:permissions>
 
         <iq:languages>

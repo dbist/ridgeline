@@ -1,5 +1,6 @@
 using Toybox.Application;
 using Toybox.WatchUi;
+using Toybox.Complications;
 
 class RidgelineApp extends Application.AppBase {
 
@@ -17,6 +18,9 @@ class RidgelineApp extends Application.AppBase {
 
     function getInitialView() {
         mView = new RidgelineView();
+        if (WatchUi has :WatchFaceDelegate) {
+            return [ mView, new RidgelineDelegate(mView) ];
+        }
         return [ mView ];
     }
 
@@ -33,5 +37,34 @@ class RidgelineApp extends Application.AppBase {
             mView.loadSettings();
         }
         WatchUi.requestUpdate();
+    }
+}
+
+// Tap a metric column to open its native widget (issue #21).
+class RidgelineDelegate extends WatchUi.WatchFaceDelegate {
+
+    hidden var mView;
+
+    function initialize(view) {
+        WatchFaceDelegate.initialize();
+        mView = view;
+    }
+
+    function onPress(clickEvent) {
+        if (!(Toybox has :Complications) || !(Complications has :exitTo)) {
+            return false;
+        }
+        var xy = clickEvent.getCoordinates();
+        var type = mView.complicationAt(xy[0], xy[1]);
+        if (type == null) {
+            return false;
+        }
+        try {
+            Complications.exitTo(new Complications.Id(type));
+            return true;
+        } catch (e) {
+            // No such complication on this watch; ignore the tap.
+            return false;
+        }
     }
 }
