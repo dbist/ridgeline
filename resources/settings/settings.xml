@@ -17,4 +17,43 @@
     <setting propertyKey="@Properties.ShowGoalRing" title="@Strings.ShowGoalRingTitle">
         <settingConfig type="boolean"/>
     </setting>
+
+    <setting propertyKey="@Properties.LeftMetric" title="@Strings.LeftMetricTitle">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.MetricHeartRate</listEntry>
+            <listEntry value="1">@Strings.MetricSteps</listEntry>
+            <listEntry value="2">@Strings.MetricBattery</listEntry>
+            <listEntry value="3">@Strings.MetricBodyBattery</listEntry>
+            <listEntry value="4">@Strings.MetricStress</listEntry>
+            <listEntry value="5">@Strings.MetricCalories</listEntry>
+            <listEntry value="6">@Strings.MetricFloors</listEntry>
+            <listEntry value="7">@Strings.MetricIntensity</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting propertyKey="@Properties.MiddleMetric" title="@Strings.MiddleMetricTitle">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.MetricHeartRate</listEntry>
+            <listEntry value="1">@Strings.MetricSteps</listEntry>
+            <listEntry value="2">@Strings.MetricBattery</listEntry>
+            <listEntry value="3">@Strings.MetricBodyBattery</listEntry>
+            <listEntry value="4">@Strings.MetricStress</listEntry>
+            <listEntry value="5">@Strings.MetricCalories</listEntry>
+            <listEntry value="6">@Strings.MetricFloors</listEntry>
+            <listEntry value="7">@Strings.MetricIntensity</listEntry>
+        </settingConfig>
+    </setting>
+
+    <setting propertyKey="@Properties.RightMetric" title="@Strings.RightMetricTitle">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.MetricHeartRate</listEntry>
+            <listEntry value="1">@Strings.MetricSteps</listEntry>
+            <listEntry value="2">@Strings.MetricBattery</listEntry>
+            <listEntry value="3">@Strings.MetricBodyBattery</listEntry>
+            <listEntry value="4">@Strings.MetricStress</listEntry>
+            <listEntry value="5">@Strings.MetricCalories</listEntry>
+            <listEntry value="6">@Strings.MetricFloors</listEntry>
+            <listEntry value="7">@Strings.MetricIntensity</listEntry>
+        </settingConfig>
+    </setting>
 </settings>

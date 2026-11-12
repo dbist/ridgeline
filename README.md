@@ -1,7 +1,7 @@
 # Ridgeline — Garmin Enduro 3 watch face
 
 A high-legibility Monkey C watch face: oversized time, date, step-goal ring,
-heart rate / steps / battery row, notification dot. Built for the Enduro 3's
+row of three configurable metrics, notification dot. Built for the Enduro 3's
 280×280 memory-in-pixel display (black background, no gradients — the things MIP
 actually renders well).
 
@@ -140,6 +140,10 @@ immediately.
 - Accent colour (orange / red / green / blue / yellow / white)
 - Seconds on wrist-raise (off saves battery)
 - Step-goal ring on/off
+- Left, middle and right columns: each shows one of heart rate, steps,
+  battery, Body Battery, stress, calories, floors climbed or intensity
+  minutes (default: heart rate / steps / battery). If the row runs out of
+  room, values of 10,000 or more shorten to `12.3k`.
 
 The ring fills in the accent colour until you reach the step goal. Past the
 goal, each further multiple of it is a lap in its own colour — light green,

@@ -2,6 +2,7 @@ using Toybox.WatchUi;
 using Toybox.Graphics;
 using Toybox.System;
 using Toybox.Lang;
+using Toybox.Math;
 using Toybox.Time;
 using Toybox.Time.Gregorian;
 using Toybox.ActivityMonitor;
@@ -12,7 +13,6 @@ class RidgelineView extends WatchUi.WatchFace {
 
     hidden const LABEL_COLOR = 0x555555;
     hidden const DIM_COLOR   = 0x333333;
-    hidden const LOW_BATTERY = 0xFF0000;
 
     // Step-ring colours for each multiple of the goal past the first: light
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
@@ -23,6 +23,7 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden var mShowSecs  = true;
     hidden var mShowRing  = true;
     hidden var mLapColors = LAP_COLORS;
+    hidden var mColumns as Lang.Array<Lang.Number> = RidgelineMetrics.COLUMN_DEFAULTS;
 
     function initialize() {
         WatchFace.initialize();
@@ -36,6 +37,14 @@ class RidgelineView extends WatchUi.WatchFace {
         mAccent   = getSetting("AccentColor", 0xFF5500);
         mShowSecs = getSetting("ShowSeconds", true);
         mShowRing = getSetting("ShowGoalRing", true);
+
+        // Which metric each column shows; an unknown id keeps the default.
+        var keys = RidgelineMetrics.COLUMN_KEYS;
+        mColumns = [];
+        for (var i = 0; i < keys.size(); i++) {
+            var id = getSetting(keys[i], RidgelineMetrics.COLUMN_DEFAULTS[i]);
+            mColumns.add(RidgelineMetrics.isValid(id) ? id : RidgelineMetrics.COLUMN_DEFAULTS[i]);
+        }
 
         // Drop a lap colour that matches the accent, or the first lap past the
         // goal would look identical to the progress towards it.
@@ -215,23 +224,67 @@ class RidgelineView extends WatchUi.WatchFace {
             + (dc.getFontHeight(labelFont) / 2)
             + 3;
 
-        var info = ActivityMonitor.getInfo();
-        var steps = (info.steps == null) ? 0 : info.steps;
-
-        var battery = System.getSystemStats().battery;
-        var batteryColor = (battery <= 15) ? LOW_BATTERY : Graphics.COLOR_WHITE;
-
-        var hr = currentHeartRate();
-        var hrText = (hr == null) ? "--" : hr.format("%d");
-
         // Outer columns sit at 0.26/0.74, not 0.23/0.77: this row is low
-        // enough that the round bezel clips text pushed further out.
-        drawColumn(dc, w * 0.26, valueY, labelY, hrText, "BPM",
-            Graphics.COLOR_WHITE, valueFont, labelFont);
-        drawColumn(dc, w * 0.50, valueY, labelY, steps.format("%d"), "STEPS",
-            Graphics.COLOR_WHITE, valueFont, labelFont);
-        drawColumn(dc, w * 0.74, valueY, labelY, battery.format("%d") + "%", "BATT",
-            batteryColor, valueFont, labelFont);
+        // enough that the round bezel clips text pushed further out. With
+        // configurable metrics a wide value or label (FLOORS, 12345) can
+        // still reach the ring, so an outer column moves inward until its
+        // wider line fits the chord at the label row (the lower, narrower
+        // one), inside the ring's inner edge less a margin.
+        var xs = [w * 0.26, w * 0.50, w * 0.74];
+        var inner = (w / 2) - 5 - 3 - 4;
+        var dy    = labelY - (h / 2);
+        var half  = (inner > dy) ? Math.sqrt((inner * inner) - (dy * dy)) : 0;
+        var left  = (w / 2) - half;
+        var right = (w / 2) + half;
+
+        var cols = [];
+        for (var i = 0; i < xs.size(); i++) {
+            cols.add(RidgelineMetrics.read(mColumns[i]));
+        }
+
+        // If two neighbours' values would touch, show 10,000+ as "12.3k".
+        var places = placeColumns(dc, cols, xs, left, right, 0, valueFont, labelFont);
+        if (places == null) {
+            places = placeColumns(dc, cols, xs, left, right, 3, valueFont, labelFont);
+        }
+
+        for (var i = 0; i < cols.size(); i++) {
+            var m = cols[i] as Lang.Array;
+            var p = (places as Lang.Array)[i] as Lang.Array;
+            drawColumn(dc, p[0], valueY, labelY, p[1], m[1], m[2],
+                valueFont, labelFont);
+        }
+    }
+
+    // Positions each column, using value text index 0 (full) or 3 (compact)
+    // of a RidgelineMetrics.read() result. Returns [[x, valueText], ...], or
+    // null if, with full text, neighbouring values would come within a gap.
+    hidden function placeColumns(dc, cols as Lang.Array, xs as Lang.Array,
+            left, right, textIdx, valueFont, labelFont) {
+        var gap = dc.getTextWidthInPixels(" ", valueFont);
+        var places = [];
+        var prevRight = null;
+        for (var i = 0; i < cols.size(); i++) {
+            var m    = cols[i] as Lang.Array;
+            var text = m[textIdx] as Lang.String;
+            var valW = dc.getTextWidthInPixels(text, valueFont);
+            var lblW = dc.getTextWidthInPixels(m[1] as Lang.String, labelFont);
+            var colW = (lblW > valW) ? lblW : valW;
+
+            var x = xs[i] as Lang.Float;
+            if (i == 0 && x - (colW / 2) < left) {
+                x = left + (colW / 2);
+            } else if (i == cols.size() - 1 && x + (colW / 2) > right) {
+                x = right - (colW / 2);
+            }
+
+            if (textIdx == 0 && prevRight != null && x - (valW / 2) < prevRight + gap) {
+                return null;
+            }
+            prevRight = x + (valW / 2);
+            places.add([x, text]);
+        }
+        return places;
     }
 
     hidden function drawColumn(dc, x, valueY, labelY, value, label, color, valueFont, labelFont) {
@@ -251,31 +304,6 @@ class RidgelineView extends WatchUi.WatchFace {
         }
         dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
         dc.fillCircle(cx, h * 0.115, 4);
-    }
-
-    // ------------------------------------------------------------- helpers
-
-    hidden function currentHeartRate() {
-        var activity = Activity.getActivityInfo();
-        if (activity != null && activity.currentHeartRate != null) {
-            return activity.currentHeartRate;
-        }
-
-        try {
-            var history = ActivityMonitor.getHeartRateHistory(1, true);
-            if (history != null) {
-                var sample = history.next();
-                if (sample != null &&
-                    sample.heartRate != null &&
-                    sample.heartRate != ActivityMonitor.INVALID_HR_SAMPLE) {
-                    return sample.heartRate;
-                }
-            }
-        } catch (e) {
-            // SensorHistory unavailable on this device.
-        }
-
-        return null;
     }
 
     // ------------------------------------------------------------ lifecycle
