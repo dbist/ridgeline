@@ -134,6 +134,11 @@ module RidgelineMetrics {
         if (id == BATTERY_DAYS) {
             var stats = System.getSystemStats();
             var days = (stats has :batteryInDays) ? stats.batteryInDays : null;
+            // A Float. Whole days floor (23.7 -> 23), but under one day
+            // shows "<1": flooring to "0" would read as a dead battery.
+            if (days != null && days > 0 && days < 1) {
+                return ["<1", "DAYS", white];
+            }
             return [fmt(days), "DAYS", white];
         }
         if (id == SUN_EVENT) {
@@ -147,11 +152,14 @@ module RidgelineMetrics {
 
     // Next sunrise or sunset, whichever comes first: ["6:58", "RISE", white]
     // or ["16:41", "SET", white]. Needs a location, from the last weather
-    // observation or else the last activity fix; "--" without one.
+    // observation or else the last activity fix; "--" without one. Both are
+    // null without the Positioning permission, which only exposes those
+    // cached fixes (it does not turn on GPS).
     function sunEvent() as Lang.Array {
         var white = Graphics.COLOR_WHITE;
         var none  = ["--", "RISE", white];
-        if (!(Toybox has :Weather) || !(Weather has :getSunrise)) {
+        if (!(Toybox has :Weather) || !(Weather has :getSunrise) ||
+            !(Weather has :getSunset)) {
             return none;
         }
         var loc = location();

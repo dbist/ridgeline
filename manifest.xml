@@ -19,6 +19,8 @@
         <iq:permissions>
             <!-- Body Battery and stress history (RidgelineMetrics.latest). -->
             <iq:uses-permission id="SensorHistory"/>
+            <!-- Cached weather/activity location for sunrise and sunset. -->
+            <iq:uses-permission id="Positioning"/>
         </iq:permissions>
 
         <iq:languages>
