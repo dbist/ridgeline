@@ -110,10 +110,8 @@ class RidgelineView extends WatchUi.WatchFace {
             dc.drawCircle(cx, cy, radius);
         }
 
-        // Work in whole degrees of sweep, not a truncated end angle. Truncating
-        // the end angle turned a sub-degree sweep (e.g. 1-27 steps of 10,000)
-        // into 90 -> 89, which drawArc reads as a 359-degree clockwise arc.
-        // frac < 1, so sweep <= 359 and start never equals end.
+        // drawArc truncates angles and draws a full circle when they match,
+        // so keep the sweep an integer in 1..359.
         var sweep = (360.0 * frac).toNumber();
         if (sweep < 1) {
             return;
