@@ -2,6 +2,7 @@ using Toybox.WatchUi;
 using Toybox.Graphics;
 using Toybox.System;
 using Toybox.Lang;
+using Toybox.Math;
 using Toybox.Time;
 using Toybox.Time.Gregorian;
 using Toybox.ActivityMonitor;
@@ -194,9 +195,20 @@ class RidgelineView extends WatchUi.WatchFace {
         // instead of the box (14px of FONT_NUMBER_HOT's 107px on the Enduro 3).
         var y = baseY - (timeH / 2) + (textH / 2) + (timeH * 0.13);
 
+        // Keep the label inside the step ring, not just the square screen:
+        // at this height the ring is well inside w - 8, and "PM" after 12:59
+        // ran across it. Clamp to the ring's chord at the label's top edge
+        // (the edge furthest from the centre, so the narrowest), measured
+        // from the ring's inner edge (radius w/2 - 5, pen 6) less a margin.
+        var inner = (w / 2) - 5 - 3 - 3;
+        var dy    = (y - (textH / 2)) - (dc.getHeight() / 2);
+        var limit = (inner > dy.abs())
+            ? (w / 2) + Math.sqrt((inner * inner) - (dy * dy))
+            : w - 8;
+
         var x = rightX + 6;
-        if (x + textW > w - 8) {
-            x = w - 8 - textW;
+        if (x + textW > limit) {
+            x = limit - textW;
         }
 
         dc.setColor(LABEL_COLOR_BRIGHT, Graphics.COLOR_TRANSPARENT);
