@@ -4,9 +4,11 @@ name: checks
 # rationale: the device build lives in build.yml and is gated on secrets.
 
 on:
+  # Push to main only, not pull_request: each PR used to run this twice
+  # (PR + merge), and Actions minutes are limited (issue #26). Run it on a
+  # branch by hand with workflow_dispatch if you want it before merging.
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:

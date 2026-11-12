@@ -213,9 +213,11 @@ seconds off in settings if you want the stock-face battery life back.
 
 ## Continuous integration
 
-`checks.yml` runs on every push and pull request and needs no credentials:
-XML and SVG well-formedness, a guard against key material or build output
-being committed, and relative-link validation across the Markdown.
+`checks.yml` runs on pushes to `main` (and by hand via *Run workflow*) and
+needs no credentials. It does not run on pull requests, to save Actions
+minutes, so a PR is checked once it merges. It covers XML and SVG
+well-formedness, a guard against key material or build output being
+committed, and relative-link validation across the Markdown.
 
 There is deliberately **no automated device build**. The Connect IQ SDK ships
 no device definitions — they are a separate, authenticated download — so
