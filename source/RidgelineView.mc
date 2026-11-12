@@ -19,6 +19,13 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden const LAP_COLORS  = [0x55FF55, 0x00AAFF, 0xAA55FF];
 
     hidden var mLowPower  = false;
+
+    // Always-on seconds (issue #17). mSecsBox is where the seconds were
+    // drawn by the last onUpdate, [x, top, width, height], or null when they
+    // can't be refreshed on their own. mPartialOk drops to false for good if
+    // the watch says onPartialUpdate is over its power budget.
+    hidden var mSecsBox   = null;
+    hidden var mPartialOk = true;
     hidden var mAccent    = 0xFF5500;
     hidden var mShowSecs  = true;
     hidden var mShowRing  = true;
@@ -78,8 +85,19 @@ class RidgelineView extends WatchUi.WatchFace {
 
         drawDate(dc, cx, h);
         var timeBox = drawTime(dc, cx, cy, w, h);
-        if (mShowSecs && !mLowPower) {
-            drawSeconds(dc, timeBox, w);
+        mSecsBox = null;
+        if (mShowSecs) {
+            var box = secondsBox(dc, timeBox, w) as Lang.Array<Lang.Number or Lang.Boolean>;
+            // With the wrist down, seconds only stay if onPartialUpdate can
+            // keep them current, and that needs a box clear of the digits:
+            // the partial update wipes the box before redrawing.
+            var refreshable = canPartialUpdate() && box[4];
+            if (!mLowPower || refreshable) {
+                drawSeconds(dc, box);
+            }
+            if (refreshable) {
+                mSecsBox = box;
+            }
         }
         drawMetrics(dc, w, h);
         drawNotificationDot(dc, cx, h);
@@ -179,14 +197,23 @@ class RidgelineView extends WatchUi.WatchFace {
     // 0.73*h, leaving ~15px of clear space below the digits -- smaller than
     // FONT_XTINY. There is no font that fits there, so the seconds go beside
     // the time instead.
-    hidden function drawSeconds(dc, timeBox, w) {
-        var secs   = System.getClockTime().sec.format("%02d");
+    //
+    // Returns [x, top, width, height, clearOfDigits]. The width is that of
+    // the widest two-digit pair, so the box is stable across the minute and
+    // big enough for onPartialUpdate to wipe any previous value. The box is
+    // clear of the digits unless a wide time pushed it back over them.
+    hidden function secondsBox(dc, timeBox as Lang.Array, w) as Lang.Array {
         var rightX = timeBox[0];
         var baseY  = timeBox[1];
         var timeH  = timeBox[2];
 
         var font  = Graphics.FONT_TINY;
-        var secsW = dc.getTextWidthInPixels(secs, font);
+        var digitW = 0;
+        for (var d = 0; d <= 9; d++) {
+            var dw = dc.getTextWidthInPixels(d.toString(), font);
+            if (dw > digitW) { digitW = dw; }
+        }
+        var secsW = digitW * 2;
         var secsH = dc.getFontHeight(font);
 
         // Bottom-align against the digits rather than centring on them.
@@ -197,9 +224,44 @@ class RidgelineView extends WatchUi.WatchFace {
             x = w - 8 - secsW;
         }
 
+        return [ x.toNumber(), (y - (secsH / 2)).toNumber(), secsW, secsH,
+                 x >= rightX + 2 ];
+    }
+
+    hidden function drawSeconds(dc, box as Lang.Array<Lang.Number or Lang.Boolean>) as Void {
+        var secs = System.getClockTime().sec.format("%02d");
         dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, y, font, secs,
+        dc.drawText(box[0], box[1] + (box[3] / 2), Graphics.FONT_TINY, secs,
             Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    hidden function canPartialUpdate() {
+        return mPartialOk && (WatchUi.WatchFace has :onPartialUpdate);
+    }
+
+    // Called every second while the wrist is down. Redraws only the seconds,
+    // clipped to their box, within the watch's partial-update power budget.
+    function onPartialUpdate(dc) {
+        if (!mShowSecs || mSecsBox == null || !mPartialOk) {
+            return;
+        }
+        var box = mSecsBox as Lang.Array<Lang.Number or Lang.Boolean>;
+        dc.setClip(box[0], box[1], box[2], box[3]);
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
+        dc.clear();
+        if (dc has :setAntiAlias) {
+            dc.setAntiAlias(true);
+        }
+        drawSeconds(dc, box);
+        dc.clearClip();
+    }
+
+    // From RidgelineDelegate: partial updates cost too much, so stop them.
+    // The next onUpdate hides the seconds while the wrist is down.
+    function onPartialBudgetExceeded() {
+        mPartialOk = false;
+        mSecsBox = null;
+        WatchUi.requestUpdate();
     }
 
     hidden function drawMetrics(dc, w, h) {

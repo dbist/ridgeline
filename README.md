@@ -136,7 +136,7 @@ may stay listed as a second *Ridgeline* until you delete its `.prg` from
 Editable from Garmin Connect (Connect IQ → Ridgeline → Settings):
 
 - Accent colour (orange / red / green / blue / yellow / white)
-- Seconds on wrist-raise (off saves battery)
+- Seconds, kept on with the wrist down (off saves battery)
 - Step-goal ring on/off
 
 The ring fills in the accent colour until you reach the step goal. Past the
@@ -207,9 +207,13 @@ compile the device binary.
 
 ## Battery note
 
-Seconds force a 1 Hz redraw while the wrist is raised; `onEnterSleep` drops back
-to once-a-minute. This is the normal cost of any seconds-displaying face — turn
-seconds off in settings if you want the stock-face battery life back.
+Seconds force a 1 Hz full redraw while the wrist is raised. With the wrist
+down the face redraws once a minute, and `onPartialUpdate` repaints only the
+small seconds box every second, within the power budget the watch allows a
+watch face. If the watch reports that budget exceeded, the seconds hide while
+the wrist is down until the face is reloaded. This is the normal cost of any
+seconds-displaying face — turn seconds off in settings if you want the
+stock-face battery life back.
 
 ## Continuous integration
 
