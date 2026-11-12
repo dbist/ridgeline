@@ -54,6 +54,27 @@ class RidgelineView extends WatchUi.WatchFace {
         } catch (e) {
             value = null;
         }
+        return coerceSetting(value, fallback);
+    }
+
+    // Properties can arrive as the wrong type (Garmin's settings FAQ), and a
+    // String accent colour would break setColor and the lap-colour filter.
+    // Keep a value only if it matches the fallback's type; widen other
+    // numerics to Number. Anything else falls back to the default.
+    hidden function coerceSetting(value, fallback) {
+        if (fallback instanceof Lang.Boolean) {
+            return (value instanceof Lang.Boolean) ? value : fallback;
+        }
+        if (fallback instanceof Lang.Number) {
+            if (value instanceof Lang.Number) {
+                return value;
+            }
+            if (value instanceof Lang.Long || value instanceof Lang.Float ||
+                value instanceof Lang.Double) {
+                return value.toNumber();
+            }
+            return fallback;
+        }
         return (value == null) ? fallback : value;
     }
 
