@@ -50,13 +50,8 @@ class RidgelineDelegate extends WatchUi.WatchFaceDelegate {
         mView = view;
     }
 
-    // #45 (always-on seconds) adds onPartialBudgetExceeded to the view and its
-    // own copy of this delegate; forward it here too so whichever class
-    // survives the merge keeps the power-budget fallback.
     function onPowerBudgetExceeded(powerInfo) {
-        if (mView has :onPartialBudgetExceeded) {
-            mView.onPartialBudgetExceeded();
-        }
+        mView.onPartialBudgetExceeded();
     }
 
     function onPress(clickEvent) {

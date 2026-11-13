@@ -137,7 +137,7 @@ Editable on the watch: hold **UP/MENU** → *Watch Face* → **Ridgeline** →
 its settings. Changes apply immediately.
 
 - Accent colour (orange / red / green / blue / yellow / white)
-- Seconds on wrist-raise (off saves battery)
+- Seconds, kept on with the wrist down (off saves battery)
 - Step-goal ring on/off
 - Left, middle and right columns: each shows one of heart rate, steps,
   battery, Body Battery, stress, calories, floors climbed, intensity
@@ -218,9 +218,14 @@ compile the device binary.
 
 ## Battery note
 
-Seconds force a 1 Hz redraw while the wrist is raised; `onEnterSleep` drops back
-to once-a-minute. This is the normal cost of any seconds-displaying face — turn
-seconds off in settings if you want the stock-face battery life back.
+Seconds force a 1 Hz full redraw while the wrist is raised. With the wrist
+down the face redraws once a minute, and `onPartialUpdate` repaints only the
+small seconds box every second, within the power budget the watch allows a
+watch face. If the watch reports that budget exceeded, partial updates stop:
+the last second shown stays until the next full redraw (within a minute), and
+from then on seconds hide while the wrist is down until the face is reloaded. This is the normal cost of any
+seconds-displaying face — turn seconds off in settings if you want the
+stock-face battery life back.
 
 ## Continuous integration
 
