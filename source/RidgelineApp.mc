@@ -20,7 +20,13 @@ class RidgelineApp extends Application.AppBase {
         return [ mView ];
     }
 
-    // Called when the user changes settings in Garmin Connect.
+    // Reached by holding UP/MENU -> Watch Face -> Ridgeline.
+    function getSettingsView() {
+        var menu = new RidgelineSettingsMenu();
+        return [ menu, new RidgelineSettingsDelegate(menu) ];
+    }
+
+    // Called when settings change, from Garmin Connect or the on-watch menu.
     function onSettingsChanged() {
         if (mView != null) {
             mView.loadSettings();

@@ -133,7 +133,8 @@ may stay listed as a second *Ridgeline* until you delete its `.prg` from
 
 ## Settings
 
-Editable from Garmin Connect (Connect IQ → Ridgeline → Settings):
+Editable on the watch: hold **UP/MENU** → *Watch Face* → **Ridgeline** →
+its settings. Changes apply immediately.
 
 - Accent colour (orange / red / green / blue / yellow / white)
 - Seconds on wrist-raise (off saves battery)
@@ -145,8 +146,10 @@ then blue, then purple, then repeating — sweeping over the completed lap. A
 lap colour that matches your accent is skipped, so the first lap past the goal
 always looks different from the progress towards it.
 
-Side-loaded app settings occasionally don't sync. If so, just change the
-defaults in `resources/properties.xml` and rebuild.
+Garmin Connect cannot change these: Garmin does not support app settings for
+side-loaded apps, and side-loading is the only way to install Ridgeline. Use
+the on-watch menu instead. To change the defaults a fresh install starts
+with, edit `resources/properties.xml` and rebuild.
 
 ## Layout notes
 
