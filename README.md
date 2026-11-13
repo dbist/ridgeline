@@ -133,9 +133,8 @@ may stay listed as a second *Ridgeline* until you delete its `.prg` from
 
 ## Settings
 
-Editable on the watch: with Ridgeline active, long-press the watch face (or
-go to *Settings → Watch Face*) and open Ridgeline's settings. Changes apply
-immediately.
+Editable on the watch: hold **UP/MENU** → *Watch Face* → **Ridgeline** →
+its settings. Changes apply immediately.
 
 - Accent colour (orange / red / green / blue / yellow / white)
 - Seconds on wrist-raise (off saves battery)

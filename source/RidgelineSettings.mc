@@ -2,9 +2,8 @@ using Toybox.Application;
 using Toybox.Lang;
 using Toybox.WatchUi;
 
-// On-watch settings menu (issue #13). Garmin Connect cannot edit settings of
-// a side-loaded app, and side-loading is the only install path, so every
-// property is editable from the watch face's own menu instead.
+// Garmin Connect cannot edit a side-loaded app's properties, so this menu is
+// the editor.
 
 // Accent colours offered on the watch, in the same order and with the same
 // values as resources/settings/settings.xml.
@@ -118,7 +117,7 @@ class RidgelineSettingsDelegate extends WatchUi.Menu2InputDelegate {
         var current = ridgelineGetProperty(key, fallback);
         WatchUi.pushView(
             new RidgelinePickerMenu(title, names, values, current),
-            new RidgelinePickerDelegate(key, item, names, values),
+            new RidgelinePickerDelegate(key, mMenu, item, names, values),
             WatchUi.SLIDE_LEFT);
     }
 }
@@ -142,15 +141,17 @@ class RidgelinePickerMenu extends WatchUi.Menu2 {
 class RidgelinePickerDelegate extends WatchUi.Menu2InputDelegate {
 
     hidden var mKey;
-    // The item in the parent menu, so its sublabel can show the new choice
-    // when the picker closes.
+    // The parent menu and the row that opened this picker. setSubLabel alone
+    // leaves the native row stale; updateItem pushes the new name to it.
+    hidden var mParentMenu;
     hidden var mParentItem;
     hidden var mNames;
     hidden var mValues;
 
-    function initialize(key, parentItem, names, values) {
+    function initialize(key, parentMenu, parentItem, names, values) {
         Menu2InputDelegate.initialize();
         mKey = key;
+        mParentMenu = parentMenu;
         mParentItem = parentItem;
         mNames = names;
         mValues = values;
@@ -160,6 +161,10 @@ class RidgelinePickerDelegate extends WatchUi.Menu2InputDelegate {
         var value = item.getId() as Lang.Number;
         ridgelineSetProperty(mKey, value);
         mParentItem.setSubLabel(ridgelineNameOf(mNames, mValues, value));
+        var index = mParentMenu.findItemById(mParentItem.getId());
+        if (index >= 0) {
+            mParentMenu.updateItem(mParentItem, index);
+        }
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
     }
 }

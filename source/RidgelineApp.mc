@@ -20,8 +20,7 @@ class RidgelineApp extends Application.AppBase {
         return [ mView ];
     }
 
-    // On-watch settings: long-press the watch face (or Settings > Watch
-    // Face) and pick Ridgeline's settings. See RidgelineSettings.mc.
+    // Reached by holding UP/MENU -> Watch Face -> Ridgeline.
     function getSettingsView() {
         var menu = new RidgelineSettingsMenu();
         return [ menu, new RidgelineSettingsDelegate(menu) ];
