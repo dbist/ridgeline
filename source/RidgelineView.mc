@@ -122,15 +122,16 @@ class RidgelineView extends WatchUi.WatchFace {
             dc.drawCircle(cx, cy, radius);
         }
 
-        if (frac <= 0.0) {
+        // drawArc truncates angles and draws a full circle when they match,
+        // so keep the sweep an integer in 1..359.
+        var sweep = (360.0 * frac).toNumber();
+        if (sweep < 1) {
             return;
         }
 
         // 90 degrees is 12 o'clock; sweep clockwise.
         dc.setColor(ringColor(lap), Graphics.COLOR_TRANSPARENT);
-        var endDeg = 90 - (360.0 * frac);
-        while (endDeg < 0) { endDeg += 360; }
-        dc.drawArc(cx, cy, radius, Graphics.ARC_CLOCKWISE, 90, endDeg.toNumber());
+        dc.drawArc(cx, cy, radius, Graphics.ARC_CLOCKWISE, 90, (90 - sweep + 360) % 360);
     }
 
     // Lap 0 (working towards the goal) is the accent; every lap past the goal
