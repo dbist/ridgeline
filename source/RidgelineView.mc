@@ -24,6 +24,9 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden var mShowRing  = true;
     hidden var mLapColors = LAP_COLORS;
     hidden var mColumns as Lang.Array<Lang.Number> = RidgelineMetrics.COLUMN_DEFAULTS;
+    // Tap targets for the metric columns, from the last onUpdate:
+    // [[left, top, right, bottom, complicationType or null], ...].
+    hidden var mHitBoxes as Lang.Array = [];
 
     function initialize() {
         WatchFace.initialize();
@@ -245,12 +248,41 @@ class RidgelineView extends WatchUi.WatchFace {
                 pass[0] as Lang.Number, font, labelFont, k == passes.size() - 1);
         }
 
-        for (var i = 0; i < cols.size(); i++) {
+        // Hold targets span the value and label lines. Neighbouring boxes
+        // meet at the midpoint between the columns as placed, so they never
+        // overlap even after placeColumns moves an outer column inward. The
+        // outer edges reach half the default column pitch (0.24w) outward.
+        var top    = valueY - (dc.getFontHeight(font) / 2);
+        var bottom = labelY + (dc.getFontHeight(labelFont) / 2);
+        var halfW  = (w * 0.24) / 2;
+        var last   = cols.size() - 1;
+        var centers = [];
+        for (var i = 0; i <= last; i++) {
+            centers.add(((places as Lang.Array)[i] as Lang.Array)[0]);
+        }
+        mHitBoxes = [];
+
+        for (var i = 0; i <= last; i++) {
             var m = cols[i] as Lang.Array;
             var p = (places as Lang.Array)[i] as Lang.Array;
             drawColumn(dc, p[0], valueY, labelY, p[1], m[1], m[2],
                 font, labelFont);
+            var boxL = (i == 0)    ? centers[i] - halfW : (centers[i - 1] + centers[i]) / 2;
+            var boxR = (i == last) ? centers[i] + halfW : (centers[i] + centers[i + 1]) / 2;
+            mHitBoxes.add([boxL, top, boxR, bottom,
+                RidgelineMetrics.complicationType(mColumns[i], m[1] as Lang.String)]);
         }
+    }
+
+    // The complication behind the metric column at (x, y), or null.
+    function complicationAt(x, y) {
+        for (var i = 0; i < mHitBoxes.size(); i++) {
+            var b = mHitBoxes[i] as Lang.Array;
+            if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) {
+                return b[4];
+            }
+        }
+        return null;
     }
 
     // Half-width of the area inside the step ring (inner edge less a margin)

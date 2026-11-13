@@ -145,7 +145,8 @@ its settings. Changes apply immediately.
   sunrise/sunset and altitude (default: heart rate / steps / battery).
   Sunrise/sunset needs a location from the last weather update or GPS
   activity, and shows `--` until there is one. If the row runs out of
-  room, values of 10,000 or more shorten to `12.3k`.
+  room, values of 10,000 or more shorten to `12.3k`. Touch and hold a
+  column to open the watch's own widget for that metric.
 
 The ring fills in the accent colour until you reach the step goal. Past the
 goal, each further multiple of it is a lap in its own colour — light green,

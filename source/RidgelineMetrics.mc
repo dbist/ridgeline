@@ -1,5 +1,6 @@
 using Toybox.Activity;
 using Toybox.ActivityMonitor;
+using Toybox.Complications;
 using Toybox.Graphics;
 using Toybox.Lang;
 using Toybox.SensorHistory;
@@ -143,6 +144,32 @@ module RidgelineMetrics {
             return [fmt(altitude()), "ALT", white];
         }
         return ["--", "", white];
+    }
+
+    // The system complication behind a metric, for tap-to-open (issue #21),
+    // or null. label disambiguates the sun event (RISE or SET). Battery days
+    // has no complication of its own, so it opens the battery one.
+    function complicationType(id as Lang.Number, label as Lang.String) {
+        if (!(Toybox has :Complications)) {
+            return null;
+        }
+        if (id == HEART_RATE)   { return Complications.COMPLICATION_TYPE_HEART_RATE; }
+        if (id == STEPS)        { return Complications.COMPLICATION_TYPE_STEPS; }
+        if (id == BATTERY ||
+            id == BATTERY_DAYS) { return Complications.COMPLICATION_TYPE_BATTERY; }
+        if (id == BODY_BATTERY) { return Complications.COMPLICATION_TYPE_BODY_BATTERY; }
+        if (id == STRESS)       { return Complications.COMPLICATION_TYPE_STRESS; }
+        if (id == CALORIES)     { return Complications.COMPLICATION_TYPE_CALORIES; }
+        if (id == FLOORS)       { return Complications.COMPLICATION_TYPE_FLOORS_CLIMBED; }
+        if (id == INTENSITY)    { return Complications.COMPLICATION_TYPE_INTENSITY_MINUTES; }
+        if (id == SOLAR)        { return Complications.COMPLICATION_TYPE_SOLAR_INPUT; }
+        if (id == ALTITUDE)     { return Complications.COMPLICATION_TYPE_ALTITUDE; }
+        if (id == SUN_EVENT) {
+            return label.equals("SET")
+                ? Complications.COMPLICATION_TYPE_SUNSET
+                : Complications.COMPLICATION_TYPE_SUNRISE;
+        }
+        return null;
     }
 
     // Next sunrise or sunset, whichever comes first: ["6:58", "RISE", white]
