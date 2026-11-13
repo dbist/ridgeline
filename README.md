@@ -69,6 +69,17 @@ The SDK ships a `monkeyc` CLI, so no editor is needed:
       -o build/Ridgeline.prg \
       -y ~/.garmin/developer_key.der
 
+That is a debug build, fine for the simulator, but most of the file is debug
+information. For the watch, and for a release, add `-r` to strip it (the file
+shrinks to about a sixth):
+
+    "$SDK/bin/monkeyc" \
+      -d enduro3 \
+      -f monkey.jungle \
+      -o build/Ridgeline.prg \
+      -y ~/.garmin/developer_key.der \
+      -r
+
 Output lands in `build/` (git-ignored). Only `Ridgeline.prg` goes on the watch;
 `gen/`, `*-mir/`, `Ridgeline-settings.json` and `Ridgeline.prg.debug.xml` are
 build intermediates.
@@ -114,7 +125,7 @@ gvfs and no extra client is needed.)
    device side of the split pane. If nothing appears, check the cable actually
    carries data — Garmin's connector charges over charge-only cables while
    never enumerating.
-2. Copy `build/Ridgeline.prg` into **`GARMIN/APPS/`** on the watch. Create
+2. Copy `build/Ridgeline.prg` (the `-r` build) into **`GARMIN/APPS/`** on the watch. Create
    `APPS` if it is missing; it does not exist on a watch that has never had a
    side-loaded app.
 3. Eject from OpenMTP, then unplug. The watch re-indexes apps on disconnect.

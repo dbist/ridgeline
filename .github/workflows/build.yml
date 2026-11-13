@@ -87,7 +87,7 @@ jobs:
           set -euo pipefail
           mkdir -p build
           monkeyc -d enduro3 -f monkey.jungle \
-            -o build/Ridgeline.prg -y ci_key.der
+            -o build/Ridgeline.prg -y ci_key.der -r
 
       - name: Type check (report only)
         continue-on-error: true
