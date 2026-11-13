@@ -140,8 +140,11 @@ its settings. Changes apply immediately.
 - Seconds on wrist-raise (off saves battery)
 - Step-goal ring on/off
 - Left, middle and right columns: each shows one of heart rate, steps,
-  battery, Body Battery, stress, calories, floors climbed or intensity
-  minutes (default: heart rate / steps / battery). If the row runs out of
+  battery, Body Battery, stress, calories, floors climbed, intensity
+  minutes, or the Enduro 3's solar intensity, battery days left, next
+  sunrise/sunset and altitude (default: heart rate / steps / battery).
+  Sunrise/sunset needs a location from the last weather update or GPS
+  activity, and shows `--` until there is one. If the row runs out of
   room, values of 10,000 or more shorten to `12.3k`.
 
 The ring fills in the accent colour until you reach the step goal. Past the
