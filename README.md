@@ -142,10 +142,19 @@ colour, seconds and ring settings revert to their defaults, and the old build
 may stay listed as a second *Ridgeline* until you delete its `.prg` from
 `GARMIN/APPS/`. The id will not change again.
 
+**Upgrading from v1.0.0: delete it on the watch first.** v1.0.0 had no
+settings menu, and copying a newer `.prg` over it keeps that: selecting
+Ridgeline offers only *Apply* and *Delete*, with no *Customize*. Before you
+copy the new file, switch to another face, then hold **UP/MENU** →
+*Watch Face* → **Ridgeline** → *Delete*. After installing, *Customize* appears.
+Deleting also clears v1.0.0's stored settings, which are the defaults unless
+you changed them in the simulator: Garmin Connect cannot edit a side-loaded
+face.
+
 ## Settings
 
 Editable on the watch: hold **UP/MENU** → *Watch Face* → **Ridgeline** →
-its settings. Changes apply immediately.
+press START → *Customize*. Changes apply immediately.
 
 - Accent colour (orange / red / green / blue / yellow / white)
 - Seconds, kept on with the wrist down (off saves battery)
