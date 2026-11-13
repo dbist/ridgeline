@@ -1,7 +1,7 @@
 # Ridgeline — Garmin Enduro 3 watch face
 
 A high-legibility Monkey C watch face: oversized time, date, step-goal ring,
-heart rate / steps / battery row, notification dot. Built for the Enduro 3's
+row of three configurable metrics, notification dot. Built for the Enduro 3's
 280×280 memory-in-pixel display (black background, no gradients — the things MIP
 actually renders well).
 
@@ -69,6 +69,17 @@ The SDK ships a `monkeyc` CLI, so no editor is needed:
       -o build/Ridgeline.prg \
       -y ~/.garmin/developer_key.der
 
+That is a debug build, fine for the simulator, but most of the file is debug
+information. For the watch, and for a release, add `-r` to strip it (the file
+shrinks to about a sixth):
+
+    "$SDK/bin/monkeyc" \
+      -d enduro3 \
+      -f monkey.jungle \
+      -o build/Ridgeline.prg \
+      -y ~/.garmin/developer_key.der \
+      -r
+
 Output lands in `build/` (git-ignored). Only `Ridgeline.prg` goes on the watch;
 `gen/`, `*-mir/`, `Ridgeline-settings.json` and `Ridgeline.prg.debug.xml` are
 build intermediates.
@@ -114,7 +125,7 @@ gvfs and no extra client is needed.)
    device side of the split pane. If nothing appears, check the cable actually
    carries data — Garmin's connector charges over charge-only cables while
    never enumerating.
-2. Copy `build/Ridgeline.prg` into **`GARMIN/APPS/`** on the watch. Create
+2. Copy `build/Ridgeline.prg` (the `-r` build) into **`GARMIN/APPS/`** on the watch. Create
    `APPS` if it is missing; it does not exist on a watch that has never had a
    side-loaded app.
 3. Eject from OpenMTP, then unplug. The watch re-indexes apps on disconnect.
@@ -133,11 +144,20 @@ may stay listed as a second *Ridgeline* until you delete its `.prg` from
 
 ## Settings
 
-Editable from Garmin Connect (Connect IQ → Ridgeline → Settings):
+Editable on the watch: hold **UP/MENU** → *Watch Face* → **Ridgeline** →
+its settings. Changes apply immediately.
 
 - Accent colour (orange / red / green / blue / yellow / white)
-- Seconds on wrist-raise (off saves battery)
+- Seconds, kept on with the wrist down (off saves battery)
 - Step-goal ring on/off
+- Left, middle and right columns: each shows one of heart rate, steps,
+  battery, Body Battery, stress, calories, floors climbed, intensity
+  minutes, or the Enduro 3's solar intensity, battery days left, next
+  sunrise/sunset and altitude (default: heart rate / steps / battery).
+  Sunrise/sunset needs a location from the last weather update or GPS
+  activity, and shows `--` until there is one. If the row runs out of
+  room, values of 10,000 or more shorten to `12.3k`. Touch and hold a
+  column to open the watch's own widget for that metric.
 
 The ring fills in the accent colour until you reach the step goal. Past the
 goal, each further multiple of it is a lap in its own colour — light green,
@@ -145,8 +165,10 @@ then blue, then purple, then repeating — sweeping over the completed lap. A
 lap colour that matches your accent is skipped, so the first lap past the goal
 always looks different from the progress towards it.
 
-Side-loaded app settings occasionally don't sync. If so, just change the
-defaults in `resources/properties.xml` and rebuild.
+Garmin Connect cannot change these: Garmin does not support app settings for
+side-loaded apps, and side-loading is the only way to install Ridgeline. Use
+the on-watch menu instead. To change the defaults a fresh install starts
+with, edit `resources/properties.xml` and rebuild.
 
 ## Layout notes
 
@@ -207,9 +229,14 @@ compile the device binary.
 
 ## Battery note
 
-Seconds force a 1 Hz redraw while the wrist is raised; `onEnterSleep` drops back
-to once-a-minute. This is the normal cost of any seconds-displaying face — turn
-seconds off in settings if you want the stock-face battery life back.
+Seconds force a 1 Hz full redraw while the wrist is raised. With the wrist
+down the face redraws once a minute, and `onPartialUpdate` repaints only the
+small seconds box every second, within the power budget the watch allows a
+watch face. If the watch reports that budget exceeded, partial updates stop:
+the last second shown stays until the next full redraw (within a minute), and
+from then on seconds hide while the wrist is down until the face is reloaded. This is the normal cost of any
+seconds-displaying face — turn seconds off in settings if you want the
+stock-face battery life back.
 
 ## Continuous integration
 

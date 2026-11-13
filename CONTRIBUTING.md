@@ -14,6 +14,19 @@ That needs a Garmin account: the SDK Manager only downloads the SDK and the
 Enduro 3 device files after you sign in, and `monkeyc` cannot build for a
 device whose files are missing.
 
+## Running the unit tests
+
+The step-ring maths has `(:test)` cases in `source/RidgelineRingTests.mc`.
+They run in the simulator, not in CI. With `SDK` set as in the README's
+*Build* section:
+
+    "$SDK/bin/connectiq" &                    # start the simulator
+    "$SDK/bin/monkeyc" -d enduro3 -f monkey.jungle \
+      -y ~/.garmin/developer_key.der -t -o build/RidgelineTest.prg
+    "$SDK/bin/monkeydo" build/RidgelineTest.prg enduro3 -t
+
+`(:test)` code is left out of normal builds, so it never ships in the `.prg`.
+
 ## What to include in a pull request
 
 1. **It builds.** The PR should leave `monkeyc` able to produce the device
