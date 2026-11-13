@@ -36,6 +36,9 @@ jobs:
           printf 'checking: %s\n' "${files[@]}"
           xmllint --noout "${files[@]}"
 
+      - name: Strings, properties, setting keys and drawables agree
+        run: scripts/check-resources.sh
+
       - name: No key material or build output is tracked
         run: |
           set -euo pipefail

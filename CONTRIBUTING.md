@@ -32,6 +32,8 @@ They run in the simulator, not in CI. With `SDK` set as in the README's
 1. **It builds.** The PR should leave `monkeyc` able to produce the device
    binary without errors. If you change code that is touched by strict type
    checking, note whether you also ran `monkeyc -l 3` and what it reported.
+   If you touch `resources/` or setting keys, run `scripts/check-resources.sh`
+   too: CI cannot compile, so it is what catches a missing string or property.
 2. **Say how you checked it.** Watch faces are device-specific because of font
    metrics, layout fractions, and the round screen. Please state which physical
    watch or which simulator device you ran it on.
