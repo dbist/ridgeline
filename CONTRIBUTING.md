@@ -13,11 +13,13 @@ that `monkeyc` builds the `.prg` successfully.
 ## Running the unit tests
 
 The step-ring maths has `(:test)` cases in `source/RidgelineRingTests.mc`.
-They run in the simulator, not in CI. Start the simulator (`connectiq`), then:
+They run in the simulator, not in CI. With `SDK` set as in the README's
+*Build* section:
 
-    monkeyc -d enduro3 -f monkey.jungle -y ~/.garmin/developer_key.der \
-      -t -o build/RidgelineTest.prg
-    monkeydo build/RidgelineTest.prg enduro3 -t
+    "$SDK/bin/connectiq" &                    # start the simulator
+    "$SDK/bin/monkeyc" -d enduro3 -f monkey.jungle \
+      -y ~/.garmin/developer_key.der -t -o build/RidgelineTest.prg
+    "$SDK/bin/monkeydo" build/RidgelineTest.prg enduro3 -t
 
 `(:test)` code is left out of normal builds, so it never ships in the `.prg`.
 

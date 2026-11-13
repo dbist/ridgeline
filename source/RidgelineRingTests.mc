@@ -1,10 +1,8 @@
 using Toybox.Lang;
 using Toybox.Test;
 
-// Unit tests for RidgelineRing. (:test) code is left out of normal builds.
-// Run locally (needs the simulator running):
-//   monkeyc -d enduro3 -f monkey.jungle -y <key> -t -o build/RidgelineTest.prg
-//   monkeydo build/RidgelineTest.prg enduro3 -t
+// (:test) code is left out of normal builds. How to run: CONTRIBUTING.md,
+// "Running the unit tests".
 
 (:test)
 function ringNoStepsDrawsNothing(logger as Test.Logger) as Lang.Boolean {

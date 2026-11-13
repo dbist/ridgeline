@@ -96,7 +96,7 @@ class RidgelineView extends WatchUi.WatchFace {
         dc.drawCircle(cx, cy, radius);
 
         // A completed lap stays as a full circle in its own colour; the next
-        // lap sweeps over it. The maths is in RidgelineRing.mc, with tests.
+        // lap sweeps over it.
         var seg   = RidgelineRing.segments(steps, goal);
         var lap   = seg[0];
         var sweep = seg[1];
