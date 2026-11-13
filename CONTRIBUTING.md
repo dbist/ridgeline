@@ -10,6 +10,10 @@ The README already covers one-time SDK setup, building, and installing on the
 watch. Before you open a PR, follow those steps from a clean clone and confirm
 that `monkeyc` builds the `.prg` successfully.
 
+That needs a Garmin account: the SDK Manager only downloads the SDK and the
+Enduro 3 device files after you sign in, and `monkeyc` cannot build for a
+device whose files are missing.
+
 ## Running the unit tests
 
 The step-ring maths has `(:test)` cases in `source/RidgelineRingTests.mc`.
@@ -43,9 +47,10 @@ They run in the simulator, not in CI. With `SDK` set as in the README's
 
 The public GitHub Actions workflow (`checks.yml`) checks XML/SVG
 well-formedness, guards against accidentally committing keys or build output,
-and verifies that relative Markdown links resolve. It needs no secrets, so it
-runs on pull requests from forks too. What it does **not** do is compile for a
-watch. Device definitions are a separate, authenticated download
+and verifies that relative Markdown links resolve. It needs no secrets. It runs
+on pushes to `main` rather than on pull requests, to save Actions minutes, so
+run the same checks locally if you want them before review. What it does
+**not** do is compile for a watch. Device definitions are a separate, authenticated download
 from Garmin, and building for a specific watch requires personal Garmin account
 credentials. That decision is recorded in issue #1. For this repository, local
 verification is what counts.

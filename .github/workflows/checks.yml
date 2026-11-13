@@ -4,9 +4,9 @@ name: checks
 # rationale: the device build lives in build.yml and is gated on secrets.
 
 on:
+  # No pull_request, to save Actions minutes; use workflow_dispatch to run on a branch.
   push:
     branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
