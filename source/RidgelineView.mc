@@ -13,6 +13,7 @@ class RidgelineView extends WatchUi.WatchFace {
 
     hidden const LABEL_COLOR = 0x555555;
     hidden const DIM_COLOR   = 0x333333;
+    hidden const LABEL_COLOR_BRIGHT = 0xAAAAAA;
 
     // Step-ring colours for each multiple of the goal past the first: light
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
@@ -192,11 +193,51 @@ class RidgelineView extends WatchUi.WatchFace {
 
         var baseY = cy - (h * 0.05);
         var textW = dc.getTextWidthInPixels(text, font);
+        var fontH = dc.getFontHeight(font);
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(cx, baseY, font, text,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        return [ cx + (textW / 2), baseY, dc.getFontHeight(font) ];
+        if (!System.getDeviceSettings().is24Hour) {
+            drawMeridiem(dc, clock.hour, cx + (textW / 2), baseY, fontH, w);
+        }
+
+        return [ cx + (textW / 2), baseY, fontH ];
+    }
+
+    // AM/PM sits in the upper right of the time block, mirroring the seconds
+    // in the lower right, so 7:00 reads differently morning and evening. It
+    // is drawn with the time, so it stays visible in low-power mode.
+    hidden function drawMeridiem(dc, hour24, rightX, baseY, timeH, w) {
+        var text  = (hour24 < 12) ? "AM" : "PM";
+        var font  = Graphics.FONT_XTINY;
+        var textW = dc.getTextWidthInPixels(text, font);
+        var textH = dc.getFontHeight(font);
+
+        // Number fonts carry empty space above the digits. Dropping by 0.13
+        // of the time font's height puts the label on the top of the glyphs
+        // instead of the box (14px of FONT_NUMBER_HOT's 107px on the Enduro 3).
+        var y = baseY - (timeH / 2) + (textH / 2) + (timeH * 0.13);
+
+        // Keep the label inside the step ring, not just the square screen:
+        // at this height the ring is well inside w - 8, and "PM" after 12:59
+        // ran across it. Clamp to the ring's chord at the label's top edge
+        // (the edge furthest from the centre, so the narrowest), measured
+        // from the ring's inner edge (radius w/2 - 5, pen 6) less a margin.
+        var inner = (w / 2) - 5 - 3 - 3;
+        var dy    = (y - (textH / 2)) - (dc.getHeight() / 2);
+        var limit = (inner > dy.abs())
+            ? (w / 2) + Math.sqrt((inner * inner) - (dy * dy))
+            : w - 8;
+
+        var x = rightX + 6;
+        if (x + textW > limit) {
+            x = limit - textW;
+        }
+
+        dc.setColor(LABEL_COLOR_BRIGHT, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, y, font, text,
+            Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
     // Seconds sit in the lower right of the time block, not beneath it. On a
