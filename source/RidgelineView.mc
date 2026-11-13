@@ -57,10 +57,8 @@ class RidgelineView extends WatchUi.WatchFace {
         return coerceSetting(value, fallback);
     }
 
-    // Properties can arrive as the wrong type (Garmin's settings FAQ), and a
-    // String accent colour would break setColor and the lap-colour filter.
-    // Keep a value only if it matches the fallback's type; widen other
-    // numerics to Number. Anything else falls back to the default.
+    // Properties can arrive as the wrong type, and a non-Number accent
+    // crashes setColor and the lap-colour compare.
     hidden function coerceSetting(value, fallback) {
         if (fallback instanceof Lang.Boolean) {
             return (value instanceof Lang.Boolean) ? value : fallback;
