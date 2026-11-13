@@ -20,12 +20,11 @@ class RidgelineView extends WatchUi.WatchFace {
 
     hidden var mLowPower  = false;
 
-    // Always-on seconds (issue #17). mSecsBox is where the seconds were
-    // drawn by the last onUpdate, [x, top, width, height], or null when they
-    // can't be refreshed on their own. mPartialOk drops to false for good if
-    // the watch says onPartialUpdate is over its power budget.
+    // mSecsBox (a secondsBox result) is null when a partial redraw must not
+    // run; mPartialOk stays false once the power budget is exceeded.
     hidden var mSecsBox   = null;
     hidden var mPartialOk = true;
+    hidden var mSecsW     = null;
     hidden var mAccent    = 0xFF5500;
     hidden var mShowSecs  = true;
     hidden var mShowRing  = true;
@@ -37,6 +36,7 @@ class RidgelineView extends WatchUi.WatchFace {
     }
 
     function onLayout(dc) {
+        mSecsW = null;
     }
 
     function loadSettings() {
@@ -76,6 +76,11 @@ class RidgelineView extends WatchUi.WatchFace {
             dc.setAntiAlias(true);
         }
 
+        // onPartialUpdate leaves its clip set (clearing it there would charge
+        // each tick as a full-screen redraw), so reset it for the full draw.
+        if (dc has :clearClip) {
+            dc.clearClip();
+        }
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
 
@@ -208,12 +213,17 @@ class RidgelineView extends WatchUi.WatchFace {
         var timeH  = timeBox[2];
 
         var font  = Graphics.FONT_TINY;
-        var digitW = 0;
-        for (var d = 0; d <= 9; d++) {
-            var dw = dc.getTextWidthInPixels(d.toString(), font);
-            if (dw > digitW) { digitW = dw; }
+        if (mSecsW == null) {
+            // Measure whole pairs ("00".."99"), not twice one digit: integer
+            // widths can round a pair a pixel wider. +1 for anti-aliasing.
+            var widest = 0;
+            for (var d = 0; d <= 9; d++) {
+                var pw = dc.getTextWidthInPixels(d.toString() + d.toString(), font);
+                if (pw > widest) { widest = pw; }
+            }
+            mSecsW = widest + 1;
         }
-        var secsW = digitW * 2;
+        var secsW = mSecsW as Lang.Number;
         var secsH = dc.getFontHeight(font);
 
         // Bottom-align against the digits rather than centring on them.
@@ -239,8 +249,6 @@ class RidgelineView extends WatchUi.WatchFace {
         return mPartialOk && (WatchUi.WatchFace has :onPartialUpdate);
     }
 
-    // Called every second while the wrist is down. Redraws only the seconds,
-    // clipped to their box, within the watch's partial-update power budget.
     function onPartialUpdate(dc) {
         if (!mShowSecs || mSecsBox == null || !mPartialOk) {
             return;
@@ -253,11 +261,10 @@ class RidgelineView extends WatchUi.WatchFace {
             dc.setAntiAlias(true);
         }
         drawSeconds(dc, box);
-        dc.clearClip();
     }
 
-    // From RidgelineDelegate: partial updates cost too much, so stop them.
-    // The next onUpdate hides the seconds while the wrist is down.
+    // No Dc here, so the seconds already on screen stay until the next full
+    // redraw (at most a minute); requestUpdate asks for it sooner.
     function onPartialBudgetExceeded() {
         mPartialOk = false;
         mSecsBox = null;

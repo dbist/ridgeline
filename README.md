@@ -210,8 +210,9 @@ compile the device binary.
 Seconds force a 1 Hz full redraw while the wrist is raised. With the wrist
 down the face redraws once a minute, and `onPartialUpdate` repaints only the
 small seconds box every second, within the power budget the watch allows a
-watch face. If the watch reports that budget exceeded, the seconds hide while
-the wrist is down until the face is reloaded. This is the normal cost of any
+watch face. If the watch reports that budget exceeded, partial updates stop:
+the last second shown stays until the next full redraw (within a minute), and
+from then on seconds hide while the wrist is down until the face is reloaded. This is the normal cost of any
 seconds-displaying face — turn seconds off in settings if you want the
 stock-face battery life back.
 
