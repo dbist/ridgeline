@@ -244,10 +244,7 @@ class RidgelineView extends WatchUi.WatchFace {
         }
     }
 
-    // A lightning bolt, left edge at x and vertically centred on y, drawn
-    // just right of the battery value while the watch is charging. The shape
-    // is in units of 1/30 of the value font's height: about 0.3 x 0.53 of it,
-    // which is 9x16px with the Enduro 3's 30px FONT_TINY.
+    // Vertices are in units of fontH / 30, so the bolt scales with the font.
     hidden function drawChargingBolt(dc, x, y, fontH) {
         var k = fontH / 30.0;
         var shape = [[5, -8], [0, 1], [4, 1], [3, 8], [9, -1], [5, -1]];
