@@ -133,9 +133,8 @@ may stay listed as a second *Ridgeline* until you delete its `.prg` from
 
 ## Settings
 
-Editable on the watch: with Ridgeline active, long-press the watch face (or
-go to *Settings → Watch Face*) and open Ridgeline's settings. Changes apply
-immediately.
+Editable on the watch: hold **UP/MENU** → *Watch Face* → **Ridgeline** →
+its settings. Changes apply immediately.
 
 - Accent colour (orange / red / green / blue / yellow / white)
 - Seconds on wrist-raise (off saves battery)
@@ -145,9 +144,9 @@ immediately.
   minutes, or the Enduro 3's solar intensity, battery days left, next
   sunrise/sunset and altitude (default: heart rate / steps / battery).
   Sunrise/sunset needs a location from the last weather update or GPS
-  activity, and shows `--` until there is one.
-  Tap a column to open the watch's own widget for that metric. If the row runs out of
-  room, values of 10,000 or more shorten to `12.3k`.
+  activity, and shows `--` until there is one. If the row runs out of
+  room, values of 10,000 or more shorten to `12.3k`. Touch and hold a
+  column to open the watch's own widget for that metric.
 
 The ring fills in the accent colour until you reach the step goal. Past the
 goal, each further multiple of it is a lap in its own colour — light green,

@@ -24,8 +24,7 @@ class RidgelineApp extends Application.AppBase {
         return [ mView ];
     }
 
-    // On-watch settings: long-press the watch face (or Settings > Watch
-    // Face) and pick Ridgeline's settings. See RidgelineSettings.mc.
+    // Reached by holding UP/MENU -> Watch Face -> Ridgeline.
     function getSettingsView() {
         var menu = new RidgelineSettingsMenu();
         return [ menu, new RidgelineSettingsDelegate(menu) ];
@@ -40,7 +39,8 @@ class RidgelineApp extends Application.AppBase {
     }
 }
 
-// Tap a metric column to open its native widget (issue #21).
+// Touch-and-hold a metric column to open its native widget. onPress is the
+// hold; onTap only reaches a watch face in config mode.
 class RidgelineDelegate extends WatchUi.WatchFaceDelegate {
 
     hidden var mView;
@@ -48,6 +48,15 @@ class RidgelineDelegate extends WatchUi.WatchFaceDelegate {
     function initialize(view) {
         WatchFaceDelegate.initialize();
         mView = view;
+    }
+
+    // #45 (always-on seconds) adds onPartialBudgetExceeded to the view and its
+    // own copy of this delegate; forward it here too so whichever class
+    // survives the merge keeps the power-budget fallback.
+    function onPowerBudgetExceeded(powerInfo) {
+        if (mView has :onPartialBudgetExceeded) {
+            mView.onPartialBudgetExceeded();
+        }
     }
 
     function onPress(clickEvent) {

@@ -64,26 +64,21 @@ module RidgelineMetrics {
         return (id instanceof Lang.Number) && id >= 0 && id <= LAST_ID;
     }
 
-    // Labels are at most five characters. At the label row the screen is
-    // ~176px wide inside the ring, which fits three five-letter FONT_XTINY
-    // labels but not three six-letter ones (FLOORS/INTENS/STRESS collided).
-    // The view separately nudges an outer column inward if a wide value
-    // would reach the ring.
-    //
-    // Returns [valueText, label, colour, compactText] for one metric. A value
-    // the watch can't supply right now reads "--" rather than hiding the
-    // column. compactText is the same value as "12.3k" when it is 10,000 or
-    // more (else equal to valueText), for when the row runs out of room.
+    // Labels stay within five characters so three columns fit.
     function read(id as Lang.Number) as Lang.Array {
         var m = readFull(id);
         return [m[0], m[1], m[2], compact(m[0])];
     }
 
-    // "12345" -> "12.3k"; anything shorter, or not a plain number, unchanged.
+    // "12345" -> "12.3k", "123456" -> "123k"; anything shorter, or not a
+    // plain number, unchanged.
     function compact(text as Lang.String) as Lang.String {
         var n = text.toNumber();
         if (n == null || n < 10000 || !n.toString().equals(text)) {
             return text;
+        }
+        if (n >= 100000) {
+            return (n / 1000).format("%d") + "k";   // "123k", not "123.5k"
         }
         return (n / 1000.0).format("%.1f") + "k";
     }
@@ -135,6 +130,11 @@ module RidgelineMetrics {
         if (id == BATTERY_DAYS) {
             var stats = System.getSystemStats();
             var days = (stats has :batteryInDays) ? stats.batteryInDays : null;
+            // A Float. Whole days floor (23.7 -> 23), but under one day
+            // shows "<1": flooring to "0" would read as a dead battery.
+            if (days != null && days > 0 && days < 1) {
+                return ["<1", "DAYS", white];
+            }
             return [fmt(days), "DAYS", white];
         }
         if (id == SUN_EVENT) {
@@ -174,11 +174,14 @@ module RidgelineMetrics {
 
     // Next sunrise or sunset, whichever comes first: ["6:58", "RISE", white]
     // or ["16:41", "SET", white]. Needs a location, from the last weather
-    // observation or else the last activity fix; "--" without one.
+    // observation or else the last activity fix; "--" without one. Both are
+    // null without the Positioning permission, which only exposes those
+    // cached fixes (it does not turn on GPS).
     function sunEvent() as Lang.Array {
         var white = Graphics.COLOR_WHITE;
         var none  = ["--", "RISE", white];
-        if (!(Toybox has :Weather) || !(Weather has :getSunrise)) {
+        if (!(Toybox has :Weather) || !(Weather has :getSunrise) ||
+            !(Weather has :getSunset)) {
             return none;
         }
         var loc = location();
@@ -276,19 +279,25 @@ module RidgelineMetrics {
         return null;
     }
 
-    // Newest sample from a SensorHistory series (needs the SensorHistory
-    // permission in manifest.xml), or null if there is none.
+    // Most recent valid (0-100) sample from a SensorHistory series, or null.
+    // Looks back a few samples: the newest slot is often null between
+    // readings or while the watch is off-wrist.
     function latest(method as Lang.Symbol) {
         if (!(Toybox has :SensorHistory) || !(SensorHistory has method)) {
             return null;
         }
         try {
-            var opts = { :period => 1, :order => SensorHistory.ORDER_NEWEST_FIRST };
+            var opts = { :period => 10, :order => SensorHistory.ORDER_NEWEST_FIRST };
             var iter = (method == :getBodyBatteryHistory)
                 ? SensorHistory.getBodyBatteryHistory(opts)
                 : SensorHistory.getStressHistory(opts);
-            var sample = (iter == null) ? null : iter.next();
-            return (sample == null) ? null : sample.data;
+            for (var sample = iter.next(); sample != null; sample = iter.next()) {
+                var d = sample.data;
+                if (d != null && d >= 0 && d <= 100) {
+                    return d;
+                }
+            }
+            return null;
         } catch (e) {
             return null;
         }
