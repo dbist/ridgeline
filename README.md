@@ -1,7 +1,7 @@
 # Ridgeline — Garmin Enduro 3 watch face
 
 A high-legibility Monkey C watch face: oversized time, date, step-goal ring,
-heart rate / steps / battery row, notification dot. Built for the Enduro 3's
+row of three configurable metrics, notification dot. Built for the Enduro 3's
 280×280 memory-in-pixel display (black background, no gradients — the things MIP
 actually renders well).
 
@@ -133,11 +133,20 @@ may stay listed as a second *Ridgeline* until you delete its `.prg` from
 
 ## Settings
 
-Editable from Garmin Connect (Connect IQ → Ridgeline → Settings):
+Editable on the watch: hold **UP/MENU** → *Watch Face* → **Ridgeline** →
+its settings. Changes apply immediately.
 
 - Accent colour (orange / red / green / blue / yellow / white)
 - Seconds, kept on with the wrist down (off saves battery)
 - Step-goal ring on/off
+- Left, middle and right columns: each shows one of heart rate, steps,
+  battery, Body Battery, stress, calories, floors climbed, intensity
+  minutes, or the Enduro 3's solar intensity, battery days left, next
+  sunrise/sunset and altitude (default: heart rate / steps / battery).
+  Sunrise/sunset needs a location from the last weather update or GPS
+  activity, and shows `--` until there is one. If the row runs out of
+  room, values of 10,000 or more shorten to `12.3k`. Touch and hold a
+  column to open the watch's own widget for that metric.
 
 The ring fills in the accent colour until you reach the step goal. Past the
 goal, each further multiple of it is a lap in its own colour — light green,
@@ -145,8 +154,10 @@ then blue, then purple, then repeating — sweeping over the completed lap. A
 lap colour that matches your accent is skipped, so the first lap past the goal
 always looks different from the progress towards it.
 
-Side-loaded app settings occasionally don't sync. If so, just change the
-defaults in `resources/properties.xml` and rebuild.
+Garmin Connect cannot change these: Garmin does not support app settings for
+side-loaded apps, and side-loading is the only way to install Ridgeline. Use
+the on-watch menu instead. To change the defaults a fresh install starts
+with, edit `resources/properties.xml` and rebuild.
 
 ## Layout notes
 
