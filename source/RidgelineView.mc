@@ -14,6 +14,7 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden const LABEL_COLOR = 0x555555;
     hidden const DIM_COLOR   = 0x333333;
     hidden const LABEL_COLOR_BRIGHT = 0xAAAAAA;
+    hidden const CHARGING_COLOR = 0x55FF55;
 
     // Step-ring colours for each multiple of the goal past the first: light
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
@@ -285,9 +286,16 @@ class RidgelineView extends WatchUi.WatchFace {
         // enough that the round bezel clips text pushed further out.
         var xs = [w * 0.26, w * 0.50, w * 0.74];
 
+        // While charging, the battery column's value carries a bolt after
+        // it. Index 4 flags that, so placement keeps the bolt inside the ring
+        // and clear of the next column; the text itself stays centred.
+        var stats    = System.getSystemStats();
+        var charging = (stats has :charging) && (stats.charging == true);
         var cols = [];
         for (var i = 0; i < xs.size(); i++) {
-            cols.add(RidgelineMetrics.read(mColumns[i]));
+            var m = RidgelineMetrics.read(mColumns[i]);
+            m.add(charging && mColumns[i] == RidgelineMetrics.BATTERY);
+            cols.add(m);
         }
 
         // Try full values, then 10,000+ as "12.3k", then those in the label
@@ -321,11 +329,36 @@ class RidgelineView extends WatchUi.WatchFace {
             var p = (places as Lang.Array)[i] as Lang.Array;
             drawColumn(dc, p[0], valueY, labelY, p[1], m[1], m[2],
                 font, labelFont);
+            if (m[4] == true) {
+                var textW = dc.getTextWidthInPixels(p[1] as Lang.String, font);
+                var fontH = dc.getFontHeight(font);
+                drawChargingBolt(dc, p[0] + (textW / 2) + (fontH * 0.1), valueY, fontH);
+            }
             var boxL = (i == 0)    ? centers[i] - halfW : (centers[i - 1] + centers[i]) / 2;
             var boxR = (i == last) ? centers[i] + halfW : (centers[i] + centers[i + 1]) / 2;
             mHitBoxes.add([boxL, top, boxR, bottom,
                 RidgelineMetrics.complicationType(mColumns[i], m[1] as Lang.String)]);
         }
+    }
+
+    // Gap plus bolt, as drawn by drawChargingBolt for a font this tall.
+    hidden function boltWidth(fontH) as Lang.Number {
+        return ((fontH * 0.1) + (fontH * 9 / 30.0)).toNumber() + 1;
+    }
+
+    // Vertices are in units of fontH / 30, so the bolt scales with the font.
+    hidden function drawChargingBolt(dc, x, y, fontH) {
+        var k = fontH / 30.0;
+        var shape = [[5, -8], [0, 1], [4, 1], [3, 8], [9, -1], [5, -1]];
+        var pts = [];
+        for (var i = 0; i < shape.size(); i++) {
+            pts.add([
+                (x + (shape[i][0] * k)).toNumber(),
+                (y + (shape[i][1] * k)).toNumber()
+            ]);
+        }
+        dc.setColor(CHARGING_COLOR, Graphics.COLOR_TRANSPARENT);
+        dc.fillPolygon(pts);
     }
 
     // The complication behind the metric column at (x, y), or null.
@@ -374,6 +407,11 @@ class RidgelineView extends WatchUi.WatchFace {
             var valW = dc.getTextWidthInPixels(text, valueFont);
             var lblW = dc.getTextWidthInPixels(m[1] as Lang.String, labelFont);
             var colW = (lblW > valW) ? lblW : valW;
+            // Extent left and right of x; a charging bolt only adds on the right.
+            var bolt   = (m[4] == true) ? boltWidth(dc.getFontHeight(valueFont)) : 0;
+            var leftE  = colW / 2;
+            var rightE = colW / 2;
+            if ((valW / 2) + bolt > rightE) { rightE = (valW / 2) + bolt; }
 
             var x = xs[i] as Lang.Float;
             if (i == 0) {
@@ -382,16 +420,16 @@ class RidgelineView extends WatchUi.WatchFace {
                 if (minL > minX) { minX = minL; }
                 if (x < minX) { x = minX; }
             } else if (i == last) {
-                var maxX = cx + valueHalf - (valW / 2);
+                var maxX = cx + valueHalf - (valW / 2) - bolt;
                 var maxL = cx + labelHalf - (lblW / 2);
                 if (maxL < maxX) { maxX = maxL; }
                 if (x > maxX) { x = maxX; }
             }
 
-            if (!force && prevRight != null && x - (colW / 2) < prevRight + gap) {
+            if (!force && prevRight != null && x - leftE < prevRight + gap) {
                 return null;
             }
-            prevRight = x + (colW / 2);
+            prevRight = x + rightE;
             places.add([x, text]);
         }
         return places;
