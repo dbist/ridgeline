@@ -12,4 +12,20 @@
     <string id="ShowSecondsTitle">Show seconds (wrist raised)</string>
     <string id="ShowGoalRingTitle">Step-goal ring</string>
     <string id="MilitaryDateTitle">Show day number before month</string>
+
+    <string id="LeftMetricTitle">Left column</string>
+    <string id="MiddleMetricTitle">Middle column</string>
+    <string id="RightMetricTitle">Right column</string>
+    <string id="MetricHeartRate">Heart rate</string>
+    <string id="MetricSteps">Steps</string>
+    <string id="MetricBattery">Battery</string>
+    <string id="MetricBodyBattery">Body Battery</string>
+    <string id="MetricStress">Stress</string>
+    <string id="MetricCalories">Calories</string>
+    <string id="MetricFloors">Floors climbed</string>
+    <string id="MetricIntensity">Intensity minutes</string>
+    <string id="MetricSolar">Solar intensity</string>
+    <string id="MetricBatteryDays">Battery days left</string>
+    <string id="MetricSunEvent">Next sunrise/sunset</string>
+    <string id="MetricAltitude">Altitude</string>
 </strings>
