@@ -17,6 +17,7 @@
         </iq:products>
 
         <iq:permissions>
+            <!-- Body Battery and stress history (RidgelineMetrics.latest). -->
             <iq:uses-permission id="SensorHistory"/>
         </iq:permissions>
 

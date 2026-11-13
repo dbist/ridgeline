@@ -2,6 +2,7 @@ using Toybox.WatchUi;
 using Toybox.Graphics;
 using Toybox.System;
 using Toybox.Lang;
+using Toybox.Math;
 using Toybox.Time;
 using Toybox.Time.Gregorian;
 using Toybox.ActivityMonitor;
@@ -12,7 +13,6 @@ class RidgelineView extends WatchUi.WatchFace {
 
     hidden const LABEL_COLOR = 0x555555;
     hidden const DIM_COLOR   = 0x333333;
-    hidden const LOW_BATTERY = 0xFF0000;
 
     // Step-ring colours for each multiple of the goal past the first: light
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
@@ -23,6 +23,7 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden var mShowSecs  = true;
     hidden var mShowRing  = true;
     hidden var mLapColors = LAP_COLORS;
+    hidden var mColumns as Lang.Array<Lang.Number> = RidgelineMetrics.COLUMN_DEFAULTS;
 
     function initialize() {
         WatchFace.initialize();
@@ -36,6 +37,14 @@ class RidgelineView extends WatchUi.WatchFace {
         mAccent   = getSetting("AccentColor", 0xFF5500);
         mShowSecs = getSetting("ShowSeconds", true);
         mShowRing = getSetting("ShowGoalRing", true);
+
+        // Which metric each column shows; an unknown id keeps the default.
+        var keys = RidgelineMetrics.COLUMN_KEYS;
+        mColumns = [];
+        for (var i = 0; i < keys.size(); i++) {
+            var id = getSetting(keys[i], RidgelineMetrics.COLUMN_DEFAULTS[i]);
+            mColumns.add(RidgelineMetrics.isValid(id) ? id : RidgelineMetrics.COLUMN_DEFAULTS[i]);
+        }
 
         // Drop a lap colour that matches the accent, or the first lap past the
         // goal would look identical to the progress towards it.
@@ -215,23 +224,91 @@ class RidgelineView extends WatchUi.WatchFace {
             + (dc.getFontHeight(labelFont) / 2)
             + 3;
 
-        var info = ActivityMonitor.getInfo();
-        var steps = (info.steps == null) ? 0 : info.steps;
-
-        var battery = System.getSystemStats().battery;
-        var batteryColor = (battery <= 15) ? LOW_BATTERY : Graphics.COLOR_WHITE;
-
-        var hr = currentHeartRate();
-        var hrText = (hr == null) ? "--" : hr.format("%d");
-
         // Outer columns sit at 0.26/0.74, not 0.23/0.77: this row is low
         // enough that the round bezel clips text pushed further out.
-        drawColumn(dc, w * 0.26, valueY, labelY, hrText, "BPM",
-            Graphics.COLOR_WHITE, valueFont, labelFont);
-        drawColumn(dc, w * 0.50, valueY, labelY, steps.format("%d"), "STEPS",
-            Graphics.COLOR_WHITE, valueFont, labelFont);
-        drawColumn(dc, w * 0.74, valueY, labelY, battery.format("%d") + "%", "BATT",
-            batteryColor, valueFont, labelFont);
+        var xs = [w * 0.26, w * 0.50, w * 0.74];
+
+        var cols = [];
+        for (var i = 0; i < xs.size(); i++) {
+            cols.add(RidgelineMetrics.read(mColumns[i]));
+        }
+
+        // Try full values, then 10,000+ as "12.3k", then those in the label
+        // font. The last pass is drawn even if it is still tight.
+        var passes = [[0, valueFont], [3, valueFont], [3, labelFont]];
+        var places = null;
+        var font   = valueFont;
+        for (var k = 0; k < passes.size() && places == null; k++) {
+            var pass = passes[k] as Lang.Array;
+            font = pass[1];
+            places = placeColumns(dc, cols, xs, w, h, valueY, labelY,
+                pass[0] as Lang.Number, font, labelFont, k == passes.size() - 1);
+        }
+
+        for (var i = 0; i < cols.size(); i++) {
+            var m = cols[i] as Lang.Array;
+            var p = (places as Lang.Array)[i] as Lang.Array;
+            drawColumn(dc, p[0], valueY, labelY, p[1], m[1], m[2],
+                font, labelFont);
+        }
+    }
+
+    // Half-width of the area inside the step ring (inner edge less a margin)
+    // at height y; text lines are tested at their baseline, where the glyphs
+    // end, rather than their centre.
+    hidden function ringHalfWidth(w, h, y) {
+        var inner = (w / 2) - 5 - 3 - 4;
+        var dy = (y - (h / 2)).abs();
+        return (inner > dy) ? Math.sqrt((inner * inner) - (dy * dy)) : 0;
+    }
+
+    // Positions each column using value text index textIdx (0 full, 3
+    // compact) of a RidgelineMetrics.read() result. An outer column moves
+    // inward until both its value and its label fit inside the ring. Returns
+    // [[x, valueText], ...], or null if neighbours (whichever of value or
+    // label is wider) come within a space of each other, unless force.
+    hidden function placeColumns(dc, cols as Lang.Array, xs as Lang.Array,
+            w, h, valueY, labelY, textIdx as Lang.Number, valueFont, labelFont,
+            force as Lang.Boolean) {
+        var valueBase = valueY + (dc.getFontHeight(valueFont) / 2)
+            - Graphics.getFontDescent(valueFont);
+        var labelBase = labelY + (dc.getFontHeight(labelFont) / 2)
+            - Graphics.getFontDescent(labelFont);
+        var valueHalf = ringHalfWidth(w, h, valueBase);
+        var labelHalf = ringHalfWidth(w, h, labelBase);
+        var cx  = w / 2;
+        var gap = dc.getTextWidthInPixels(" ", labelFont);
+        var last = cols.size() - 1;
+
+        var places = [];
+        var prevRight = null;
+        for (var i = 0; i <= last; i++) {
+            var m    = cols[i] as Lang.Array;
+            var text = m[textIdx] as Lang.String;
+            var valW = dc.getTextWidthInPixels(text, valueFont);
+            var lblW = dc.getTextWidthInPixels(m[1] as Lang.String, labelFont);
+            var colW = (lblW > valW) ? lblW : valW;
+
+            var x = xs[i] as Lang.Float;
+            if (i == 0) {
+                var minX = cx - valueHalf + (valW / 2);
+                var minL = cx - labelHalf + (lblW / 2);
+                if (minL > minX) { minX = minL; }
+                if (x < minX) { x = minX; }
+            } else if (i == last) {
+                var maxX = cx + valueHalf - (valW / 2);
+                var maxL = cx + labelHalf - (lblW / 2);
+                if (maxL < maxX) { maxX = maxL; }
+                if (x > maxX) { x = maxX; }
+            }
+
+            if (!force && prevRight != null && x - (colW / 2) < prevRight + gap) {
+                return null;
+            }
+            prevRight = x + (colW / 2);
+            places.add([x, text]);
+        }
+        return places;
     }
 
     hidden function drawColumn(dc, x, valueY, labelY, value, label, color, valueFont, labelFont) {
@@ -251,31 +328,6 @@ class RidgelineView extends WatchUi.WatchFace {
         }
         dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
         dc.fillCircle(cx, h * 0.115, 4);
-    }
-
-    // ------------------------------------------------------------- helpers
-
-    hidden function currentHeartRate() {
-        var activity = Activity.getActivityInfo();
-        if (activity != null && activity.currentHeartRate != null) {
-            return activity.currentHeartRate;
-        }
-
-        try {
-            var history = ActivityMonitor.getHeartRateHistory(1, true);
-            if (history != null) {
-                var sample = history.next();
-                if (sample != null &&
-                    sample.heartRate != null &&
-                    sample.heartRate != ActivityMonitor.INVALID_HR_SAMPLE) {
-                    return sample.heartRate;
-                }
-            }
-        } catch (e) {
-            // SensorHistory unavailable on this device.
-        }
-
-        return null;
     }
 
     // ------------------------------------------------------------ lifecycle
