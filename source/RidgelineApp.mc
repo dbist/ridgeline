@@ -39,9 +39,8 @@ class RidgelineApp extends Application.AppBase {
     }
 }
 
-// Touch-and-hold a metric column to open its native widget (onPress is the
-// hold; onTap only reaches a watch face in config mode), and hears when
-// always-on seconds exceed the partial-update power budget.
+// Touch-and-hold a metric column to open its native widget. onPress is the
+// hold; onTap only reaches a watch face in config mode.
 class RidgelineDelegate extends WatchUi.WatchFaceDelegate {
 
     hidden var mView;
