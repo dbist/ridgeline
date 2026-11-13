@@ -2,9 +2,8 @@ using Toybox.Application;
 using Toybox.Lang;
 using Toybox.WatchUi;
 
-// On-watch settings menu (issue #13). Garmin Connect cannot edit settings of
-// a side-loaded app, and side-loading is the only install path, so the same
-// three properties are editable from the watch face's own menu instead.
+// Garmin Connect cannot edit a side-loaded app's properties, so this menu is
+// the editor.
 
 // Accent colours offered on the watch, in the same order and with the same
 // values as resources/settings/settings.xml.
@@ -85,7 +84,7 @@ class RidgelineSettingsDelegate extends WatchUi.Menu2InputDelegate {
             ridgelineSetProperty("ShowGoalRing", (item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :accent) {
             var picker = new RidgelineColorMenu();
-            WatchUi.pushView(picker, new RidgelineColorDelegate(item), WatchUi.SLIDE_LEFT);
+            WatchUi.pushView(picker, new RidgelineColorDelegate(mMenu, item), WatchUi.SLIDE_LEFT);
         }
     }
 }
@@ -112,12 +111,14 @@ class RidgelineColorMenu extends WatchUi.Menu2 {
 
 class RidgelineColorDelegate extends WatchUi.Menu2InputDelegate {
 
-    // The "Accent colour" item in the parent menu, so its sublabel can show
-    // the new choice when the picker closes.
+    // The parent menu and its "Accent colour" row. setSubLabel alone leaves
+    // the native row stale; updateItem pushes the new name to it.
+    hidden var mParentMenu;
     hidden var mParentItem;
 
-    function initialize(parentItem) {
+    function initialize(parentMenu, parentItem) {
         Menu2InputDelegate.initialize();
+        mParentMenu = parentMenu;
         mParentItem = parentItem;
     }
 
@@ -125,6 +126,10 @@ class RidgelineColorDelegate extends WatchUi.Menu2InputDelegate {
         var color = item.getId() as Lang.Number;
         ridgelineSetProperty("AccentColor", color);
         mParentItem.setSubLabel(RidgelineColors.nameOf(color));
+        var index = mParentMenu.findItemById(mParentItem.getId());
+        if (index >= 0) {
+            mParentMenu.updateItem(mParentItem, index);
+        }
         WatchUi.popView(WatchUi.SLIDE_RIGHT);
     }
 }
