@@ -225,46 +225,64 @@ class RidgelineView extends WatchUi.WatchFace {
             + 3;
 
         // Outer columns sit at 0.26/0.74, not 0.23/0.77: this row is low
-        // enough that the round bezel clips text pushed further out. With
-        // configurable metrics a wide value or label (FLOORS, 12345) can
-        // still reach the ring, so an outer column moves inward until its
-        // wider line fits the chord at the label row (the lower, narrower
-        // one), inside the ring's inner edge less a margin.
+        // enough that the round bezel clips text pushed further out.
         var xs = [w * 0.26, w * 0.50, w * 0.74];
-        var inner = (w / 2) - 5 - 3 - 4;
-        var dy    = labelY - (h / 2);
-        var half  = (inner > dy) ? Math.sqrt((inner * inner) - (dy * dy)) : 0;
-        var left  = (w / 2) - half;
-        var right = (w / 2) + half;
 
         var cols = [];
         for (var i = 0; i < xs.size(); i++) {
             cols.add(RidgelineMetrics.read(mColumns[i]));
         }
 
-        // If two neighbours' values would touch, show 10,000+ as "12.3k".
-        var places = placeColumns(dc, cols, xs, left, right, 0, valueFont, labelFont);
-        if (places == null) {
-            places = placeColumns(dc, cols, xs, left, right, 3, valueFont, labelFont);
+        // Try full values, then 10,000+ as "12.3k", then those in the label
+        // font. The last pass is drawn even if it is still tight.
+        var passes = [[0, valueFont], [3, valueFont], [3, labelFont]];
+        var places = null;
+        var font   = valueFont;
+        for (var k = 0; k < passes.size() && places == null; k++) {
+            var pass = passes[k] as Lang.Array;
+            font = pass[1];
+            places = placeColumns(dc, cols, xs, w, h, valueY, labelY,
+                pass[0] as Lang.Number, font, labelFont, k == passes.size() - 1);
         }
 
         for (var i = 0; i < cols.size(); i++) {
             var m = cols[i] as Lang.Array;
             var p = (places as Lang.Array)[i] as Lang.Array;
             drawColumn(dc, p[0], valueY, labelY, p[1], m[1], m[2],
-                valueFont, labelFont);
+                font, labelFont);
         }
     }
 
-    // Positions each column, using value text index 0 (full) or 3 (compact)
-    // of a RidgelineMetrics.read() result. Returns [[x, valueText], ...], or
-    // null if, with full text, neighbouring values would come within a gap.
+    // Half-width of the area inside the step ring (inner edge less a margin)
+    // at height y; text lines are tested at their baseline, where the glyphs
+    // end, rather than their centre.
+    hidden function ringHalfWidth(w, h, y) {
+        var inner = (w / 2) - 5 - 3 - 4;
+        var dy = (y - (h / 2)).abs();
+        return (inner > dy) ? Math.sqrt((inner * inner) - (dy * dy)) : 0;
+    }
+
+    // Positions each column using value text index textIdx (0 full, 3
+    // compact) of a RidgelineMetrics.read() result. An outer column moves
+    // inward until both its value and its label fit inside the ring. Returns
+    // [[x, valueText], ...], or null if neighbours (whichever of value or
+    // label is wider) come within a space of each other, unless force.
     hidden function placeColumns(dc, cols as Lang.Array, xs as Lang.Array,
-            left, right, textIdx, valueFont, labelFont) {
-        var gap = dc.getTextWidthInPixels(" ", valueFont);
+            w, h, valueY, labelY, textIdx as Lang.Number, valueFont, labelFont,
+            force as Lang.Boolean) {
+        var valueBase = valueY + (dc.getFontHeight(valueFont) / 2)
+            - Graphics.getFontDescent(valueFont);
+        var labelBase = labelY + (dc.getFontHeight(labelFont) / 2)
+            - Graphics.getFontDescent(labelFont);
+        var valueHalf = ringHalfWidth(w, h, valueBase);
+        var labelHalf = ringHalfWidth(w, h, labelBase);
+        var cx  = w / 2;
+        var gap = dc.getTextWidthInPixels(" ", labelFont);
+        var last = cols.size() - 1;
+
         var places = [];
         var prevRight = null;
-        for (var i = 0; i < cols.size(); i++) {
+        for (var i = 0; i <= last; i++) {
             var m    = cols[i] as Lang.Array;
             var text = m[textIdx] as Lang.String;
             var valW = dc.getTextWidthInPixels(text, valueFont);
@@ -272,16 +290,22 @@ class RidgelineView extends WatchUi.WatchFace {
             var colW = (lblW > valW) ? lblW : valW;
 
             var x = xs[i] as Lang.Float;
-            if (i == 0 && x - (colW / 2) < left) {
-                x = left + (colW / 2);
-            } else if (i == cols.size() - 1 && x + (colW / 2) > right) {
-                x = right - (colW / 2);
+            if (i == 0) {
+                var minX = cx - valueHalf + (valW / 2);
+                var minL = cx - labelHalf + (lblW / 2);
+                if (minL > minX) { minX = minL; }
+                if (x < minX) { x = minX; }
+            } else if (i == last) {
+                var maxX = cx + valueHalf - (valW / 2);
+                var maxL = cx + labelHalf - (lblW / 2);
+                if (maxL < maxX) { maxX = maxL; }
+                if (x > maxX) { x = maxX; }
             }
 
-            if (textIdx == 0 && prevRight != null && x - (valW / 2) < prevRight + gap) {
+            if (!force && prevRight != null && x - (colW / 2) < prevRight + gap) {
                 return null;
             }
-            prevRight = x + (valW / 2);
+            prevRight = x + (colW / 2);
             places.add([x, text]);
         }
         return places;
