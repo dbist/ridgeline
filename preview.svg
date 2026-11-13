@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 280" width="280" height="280" role="img" aria-label="Ridgeline watch face, 10:19, Saturday 20 September">
 <title>Ridgeline on a Garmin Enduro 3 (280x280)</title>
 <circle cx="140.0" cy="140.0" r="140.0" fill="#000000"/>
-<circle cx="140.0" cy="140.0" r="135.0" fill="none" stroke="#333333" stroke-width="6"/>
+<circle cx="140.0" cy="140.0" r="135.0" fill="none" stroke="#555555" stroke-width="2"/>
 <path d="M 140.00 5.00 A 135.0 135.0 0 1 1 26.93 66.24" fill="none" stroke="#FF5500" stroke-width="6" stroke-linecap="butt"/>
 <circle cx="140.0" cy="32.2" r="4" fill="#FF5500"/>
 <text x="140.0" y="56.0" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="bold" fill="#FFFFFF" text-anchor="middle" dominant-baseline="central">SAT&#160;&#160;20 SEP</text>
