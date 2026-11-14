@@ -149,7 +149,6 @@ class RidgelineView extends WatchUi.WatchFace {
         var goal    = (info.stepGoal == null || info.stepGoal <= 0) ? 10000 : info.stepGoal;
         var radius  = (w / 2) - 5;
 
-        // Thin track, centred under the 6px progress arc (same radius).
         dc.setPenWidth(2);
         dc.setColor(DIM_COLOR, Graphics.COLOR_TRANSPARENT);
         dc.drawCircle(cx, cy, radius);
