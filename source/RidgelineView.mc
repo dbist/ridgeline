@@ -38,13 +38,53 @@ class RidgelineView extends WatchUi.WatchFace {
     // [[left, top, right, bottom, complicationType or null], ...].
     hidden var mHitBoxes as Lang.Array = [];
 
+    // Fixed per screen, from onLayout.
+    hidden var mW = 0;
+    hidden var mH = 0;
+    hidden var mCx = 0;
+    hidden var mCy = 0;
+    hidden var mThaiH  = 0;    // FONT_NUMBER_THAI_HOT
+    hidden var mHotH   = 0;    // FONT_NUMBER_HOT
+    hidden var mTinyH  = 0;    // FONT_TINY
+    hidden var mXtinyH = 0;    // FONT_XTINY
+    hidden var mValueY = 0.0;  // metric value row
+    hidden var mLabelY = 0.0;  // metric label row
+
+    // Rebuilt when the minute changes (layoutMinute). A 12/24-hour change on
+    // the watch therefore shows from the next minute, or on wrist raise.
+    hidden var mMinuteKey  = -1;
+    hidden var mDateText   = "";
+    hidden var mTimeText   = "";
+    hidden var mTimeFont   = Graphics.FONT_NUMBER_HOT;
+    hidden var mTimeBaseY  = 0.0;
+    hidden var mMerText    = null;  // "AM"/"PM", or null in 24-hour mode
+    hidden var mMerX       = 0.0;
+    hidden var mMerY       = 0.0;
+    hidden var mSecsLayout = null;  // secondsBox() for the current time text
+
     function initialize() {
         WatchFace.initialize();
         loadSettings();
     }
 
     function onLayout(dc) {
+        mW  = dc.getWidth();
+        mH  = dc.getHeight();
+        mCx = mW / 2;
+        mCy = mH / 2;
+        mThaiH  = dc.getFontHeight(Graphics.FONT_NUMBER_THAI_HOT);
+        mHotH   = dc.getFontHeight(Graphics.FONT_NUMBER_HOT);
+        mTinyH  = dc.getFontHeight(Graphics.FONT_TINY);
+        mXtinyH = dc.getFontHeight(Graphics.FONT_XTINY);
+
+        // Stack the label under the value using the real font boxes rather
+        // than a second magic fraction. FONT_TINY and FONT_XTINY differ per
+        // device, and the old h*0.822 left the two rows touching at 280px.
+        mValueY = mH * 0.730;
+        mLabelY = mValueY + (mTinyH / 2) + (mXtinyH / 2) + 3;
+
         mSecsW = null;
+        mMinuteKey = -1;
     }
 
     function loadSettings() {
@@ -102,11 +142,6 @@ class RidgelineView extends WatchUi.WatchFace {
     // ---------------------------------------------------------------- draw
 
     function onUpdate(dc) {
-        var w  = dc.getWidth();
-        var h  = dc.getHeight();
-        var cx = w / 2;
-        var cy = h / 2;
-
         if (dc has :setAntiAlias) {
             dc.setAntiAlias(true);
         }
@@ -119,35 +154,89 @@ class RidgelineView extends WatchUi.WatchFace {
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
 
-        if (mShowRing) {
-            drawStepRing(dc, cx, cy, w);
+        // One read of each per frame, passed down. Reading the clock once
+        // also means the time and the seconds always come from the same
+        // instant, so a frame can't show the old minute with :00.
+        var clock    = System.getClockTime();
+        var settings = System.getDeviceSettings();
+        var info     = ActivityMonitor.getInfo();
+        var stats    = System.getSystemStats();
+
+        var minuteKey = (clock.hour * 60) + clock.min;
+        if (minuteKey != mMinuteKey) {
+            layoutMinute(dc, clock, settings.is24Hour);
+            mMinuteKey = minuteKey;
         }
 
-        drawDate(dc, cx, h);
-        var timeBox = drawTime(dc, cx, cy, w, h);
+        if (mShowRing) {
+            drawStepRing(dc, info);
+        }
+
+        drawDate(dc);
+        drawTime(dc);
         mSecsBox = null;
         if (mShowSecs) {
-            var box = secondsBox(dc, timeBox, w) as Lang.Array<Lang.Number or Lang.Boolean>;
+            var box = mSecsLayout as Lang.Array<Lang.Number or Lang.Boolean>;
             // With the wrist down, seconds only stay if onPartialUpdate can
             // keep them current, and that needs a box clear of the digits:
             // the partial update wipes the box before redrawing.
             var refreshable = canPartialUpdate() && box[4];
             if (!mLowPower || refreshable) {
-                drawSeconds(dc, box);
+                drawSeconds(dc, box, clock.sec);
             }
             if (refreshable) {
                 mSecsBox = box;
             }
         }
-        drawMetrics(dc, w, h);
-        drawNotificationDot(dc, cx, h);
+        drawMetrics(dc, info, stats, settings);
+        drawNotificationDot(dc, settings);
     }
 
-    hidden function drawStepRing(dc, cx, cy, w) {
-        var info    = ActivityMonitor.getInfo();
+    // Everything that changes at most once a minute: date and time text, the
+    // time font and where the AM/PM label and the seconds go beside it.
+    hidden function layoutMinute(dc, clock as System.ClockTime, is24Hour as Lang.Boolean) as Void {
+        var now = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
+        mDateText = Lang.format("$1$  $2$ $3$", [
+            now.day_of_week.toUpper(),
+            now.day.format("%02d"),
+            now.month.toUpper()
+        ]);
+
+        var hour = clock.hour;
+        if (!is24Hour) {
+            hour = hour % 12;
+            if (hour == 0) { hour = 12; }
+        }
+        mTimeText = Lang.format("$1$:$2$", [
+            is24Hour ? hour.format("%02d") : hour.format("%d"),
+            clock.min.format("%02d")
+        ]);
+
+        mTimeFont = Graphics.FONT_NUMBER_THAI_HOT;
+        var fontH = mThaiH;
+        if (fontH > (mH * 0.40) ||
+            dc.getTextWidthInPixels(mTimeText, mTimeFont) > (mW * 0.88)) {
+            mTimeFont = Graphics.FONT_NUMBER_HOT;
+            fontH = mHotH;
+        }
+
+        mTimeBaseY = mCy - (mH * 0.05);
+        var textW  = dc.getTextWidthInPixels(mTimeText, mTimeFont);
+        var rightX = mCx + (textW / 2);
+
+        mMerText = null;
+        if (!is24Hour) {
+            layoutMeridiem(dc, clock.hour, rightX, mTimeBaseY, fontH);
+        }
+        mSecsLayout = secondsBox(dc, rightX, mTimeBaseY, fontH);
+    }
+
+    hidden function drawStepRing(dc, info as ActivityMonitor.Info) {
+        var cx      = mCx;
+        var cy      = mCy;
         var steps   = (info.steps == null) ? 0 : info.steps;
         var goal    = (info.stepGoal == null || info.stepGoal <= 0) ? 10000 : info.stepGoal;
-        var radius  = (w / 2) - 5;
+        var radius  = (mW / 2) - 5;
 
         dc.setPenWidth(2);
         dc.setColor(DIM_COLOR, Graphics.COLOR_TRANSPARENT);
@@ -183,63 +272,33 @@ class RidgelineView extends WatchUi.WatchFace {
         return mLapColors[(lap - 1) % mLapColors.size()];
     }
 
-    hidden function drawDate(dc, cx, h) {
-        var now = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
-        var text = Lang.format("$1$  $2$ $3$", [
-            now.day_of_week.toUpper(),
-            now.day.format("%02d"),
-            now.month.toUpper()
-        ]);
-
+    hidden function drawDate(dc) {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, h * 0.20, Graphics.FONT_SMALL, text,
+        dc.drawText(mCx, mH * 0.20, Graphics.FONT_SMALL, mDateText,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    // Returns [rightEdgeX, centreY, fontHeight] for the time block, so the
-    // seconds can be placed against it without re-measuring.
-    hidden function drawTime(dc, cx, cy, w, h) {
-        var clock = System.getClockTime();
-        var hour  = clock.hour;
-
-        if (!System.getDeviceSettings().is24Hour) {
-            hour = hour % 12;
-            if (hour == 0) { hour = 12; }
-        }
-
-        var text = Lang.format("$1$:$2$", [
-            System.getDeviceSettings().is24Hour ? hour.format("%02d") : hour.format("%d"),
-            clock.min.format("%02d")
-        ]);
-
-        var font = Graphics.FONT_NUMBER_THAI_HOT;
-        if (dc.getFontHeight(font) > (h * 0.40) ||
-            dc.getTextWidthInPixels(text, font) > (w * 0.88)) {
-            font = Graphics.FONT_NUMBER_HOT;
-        }
-
-        var baseY = cy - (h * 0.05);
-        var textW = dc.getTextWidthInPixels(text, font);
-        var fontH = dc.getFontHeight(font);
+    hidden function drawTime(dc) {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(cx, baseY, font, text,
+        dc.drawText(mCx, mTimeBaseY, mTimeFont, mTimeText,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
 
-        if (!System.getDeviceSettings().is24Hour) {
-            drawMeridiem(dc, clock.hour, cx + (textW / 2), baseY, fontH, w);
+        if (mMerText != null) {
+            dc.setColor(LABEL_COLOR_BRIGHT, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(mMerX, mMerY, Graphics.FONT_XTINY, mMerText,
+                Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
         }
-
-        return [ cx + (textW / 2), baseY, fontH ];
     }
 
     // AM/PM sits in the upper right of the time block, mirroring the seconds
     // in the lower right, so 7:00 reads differently morning and evening. It
     // is drawn with the time, so it stays visible in low-power mode.
-    hidden function drawMeridiem(dc, hour24, rightX, baseY, timeH, w) {
+    hidden function layoutMeridiem(dc, hour24, rightX, baseY, timeH) as Void {
+        var w     = mW;
         var text  = (hour24 < 12) ? "AM" : "PM";
         var font  = Graphics.FONT_XTINY;
         var textW = dc.getTextWidthInPixels(text, font);
-        var textH = dc.getFontHeight(font);
+        var textH = mXtinyH;
 
         // Number fonts carry empty space above the digits. Dropping by 0.13
         // of the time font's height puts the label on the top of the glyphs
@@ -252,7 +311,7 @@ class RidgelineView extends WatchUi.WatchFace {
         // (the edge furthest from the centre, so the narrowest), measured
         // from the ring's inner edge (radius w/2 - 5, pen 6) less a margin.
         var inner = (w / 2) - 5 - 3 - 3;
-        var dy    = (y - (textH / 2)) - (dc.getHeight() / 2);
+        var dy    = (y - (textH / 2)) - mCy;
         var limit = (inner > dy.abs())
             ? (w / 2) + Math.sqrt((inner * inner) - (dy * dy))
             : w - 8;
@@ -262,9 +321,9 @@ class RidgelineView extends WatchUi.WatchFace {
             x = limit - textW;
         }
 
-        dc.setColor(LABEL_COLOR_BRIGHT, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(x, y, font, text,
-            Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
+        mMerText = text;
+        mMerX    = x;
+        mMerY    = y;
     }
 
     // Seconds sit in the lower right of the time block, not beneath it. On a
@@ -277,11 +336,8 @@ class RidgelineView extends WatchUi.WatchFace {
     // the widest two-digit pair, so the box is stable across the minute and
     // big enough for onPartialUpdate to wipe any previous value. The box is
     // clear of the digits unless a wide time pushed it back over them.
-    hidden function secondsBox(dc, timeBox as Lang.Array, w) as Lang.Array {
-        var rightX = timeBox[0];
-        var baseY  = timeBox[1];
-        var timeH  = timeBox[2];
-
+    hidden function secondsBox(dc, rightX, baseY, timeH) as Lang.Array {
+        var w     = mW;
         var font  = Graphics.FONT_TINY;
         if (mSecsW == null) {
             // Measure whole pairs ("00".."99"), not twice one digit: integer
@@ -294,7 +350,7 @@ class RidgelineView extends WatchUi.WatchFace {
             mSecsW = widest + 1;
         }
         var secsW = mSecsW as Lang.Number;
-        var secsH = dc.getFontHeight(font);
+        var secsH = mTinyH;
 
         // Bottom-align against the digits rather than centring on them.
         var y = baseY + (timeH / 2) - (secsH / 2) - 6;
@@ -308,8 +364,9 @@ class RidgelineView extends WatchUi.WatchFace {
                  x >= rightX + 2 ];
     }
 
-    hidden function drawSeconds(dc, box as Lang.Array<Lang.Number or Lang.Boolean>) as Void {
-        var secs = System.getClockTime().sec.format("%02d");
+    hidden function drawSeconds(dc, box as Lang.Array<Lang.Number or Lang.Boolean>,
+            sec as Lang.Number) as Void {
+        var secs = sec.format("%02d");
         dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
         dc.drawText(box[0], box[1] + (box[3] / 2), Graphics.FONT_TINY, secs,
             Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -330,7 +387,7 @@ class RidgelineView extends WatchUi.WatchFace {
         if (dc has :setAntiAlias) {
             dc.setAntiAlias(true);
         }
-        drawSeconds(dc, box);
+        drawSeconds(dc, box, System.getClockTime().sec);
     }
 
     // No Dc here, so the seconds already on screen stay until the next full
@@ -341,18 +398,14 @@ class RidgelineView extends WatchUi.WatchFace {
         WatchUi.requestUpdate();
     }
 
-    hidden function drawMetrics(dc, w, h) {
+    hidden function drawMetrics(dc, info as ActivityMonitor.Info,
+            stats as System.Stats, settings as System.DeviceSettings) {
+        var w = mW;
+        var h = mH;
         var valueFont = Graphics.FONT_TINY;
         var labelFont = Graphics.FONT_XTINY;
-
-        // Stack the label under the value using the real font boxes rather
-        // than a second magic fraction. FONT_TINY and FONT_XTINY differ per
-        // device, and the old h*0.822 left the two rows touching at 280px.
-        var valueY = h * 0.730;
-        var labelY = valueY
-            + (dc.getFontHeight(valueFont) / 2)
-            + (dc.getFontHeight(labelFont) / 2)
-            + 3;
+        var valueY = mValueY;
+        var labelY = mLabelY;
 
         // Outer columns sit at 0.26/0.74, not 0.23/0.77: this row is low
         // enough that the round bezel clips text pushed further out.
@@ -361,11 +414,10 @@ class RidgelineView extends WatchUi.WatchFace {
         // While charging, the battery column's value carries a bolt after
         // it. Index 4 flags that, so placement keeps the bolt inside the ring
         // and clear of the next column; the text itself stays centred.
-        var stats    = System.getSystemStats();
         var charging = (stats has :charging) && (stats.charging == true);
         var cols = [];
         for (var i = 0; i < xs.size(); i++) {
-            var m = RidgelineMetrics.read(mColumns[i]);
+            var m = RidgelineMetrics.read(mColumns[i], info, stats, settings);
             m.add(charging && mColumns[i] == RidgelineMetrics.BATTERY);
             cols.add(m);
         }
@@ -386,8 +438,8 @@ class RidgelineView extends WatchUi.WatchFace {
         // meet at the midpoint between the columns as placed, so they never
         // overlap even after placeColumns moves an outer column inward. The
         // outer edges reach half the default column pitch (0.24w) outward.
-        var top    = valueY - (dc.getFontHeight(font) / 2);
-        var bottom = labelY + (dc.getFontHeight(labelFont) / 2);
+        var top    = valueY - (metricFontH(font) / 2);
+        var bottom = labelY + (mXtinyH / 2);
         var halfW  = (w * 0.24) / 2;
         var last   = cols.size() - 1;
         var centers = [];
@@ -403,7 +455,7 @@ class RidgelineView extends WatchUi.WatchFace {
                 font, labelFont);
             if (m[4] == true) {
                 var textW = dc.getTextWidthInPixels(p[1] as Lang.String, font);
-                var fontH = dc.getFontHeight(font);
+                var fontH = metricFontH(font);
                 drawChargingBolt(dc, p[0] + (textW / 2) + (fontH * 0.1), valueY, fontH);
             }
             var boxL = (i == 0)    ? centers[i] - halfW : (centers[i - 1] + centers[i]) / 2;
@@ -411,6 +463,12 @@ class RidgelineView extends WatchUi.WatchFace {
             mHitBoxes.add([boxL, top, boxR, bottom,
                 RidgelineMetrics.complicationType(mColumns[i], m[1] as Lang.String)]);
         }
+    }
+
+    // The metric rows only use FONT_TINY (values) and FONT_XTINY (labels, and
+    // values in the last placement pass).
+    hidden function metricFontH(font) as Lang.Number {
+        return (font == Graphics.FONT_TINY) ? mTinyH : mXtinyH;
     }
 
     // Gap plus bolt, as drawn by drawChargingBolt for a font this tall.
@@ -461,9 +519,9 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden function placeColumns(dc, cols as Lang.Array, xs as Lang.Array,
             w, h, valueY, labelY, textIdx as Lang.Number, valueFont, labelFont,
             force as Lang.Boolean) {
-        var valueBase = valueY + (dc.getFontHeight(valueFont) / 2)
+        var valueBase = valueY + (metricFontH(valueFont) / 2)
             - Graphics.getFontDescent(valueFont);
-        var labelBase = labelY + (dc.getFontHeight(labelFont) / 2)
+        var labelBase = labelY + (mXtinyH / 2)
             - Graphics.getFontDescent(labelFont);
         var valueHalf = ringHalfWidth(w, h, valueBase);
         var labelHalf = ringHalfWidth(w, h, labelBase);
@@ -480,7 +538,7 @@ class RidgelineView extends WatchUi.WatchFace {
             var lblW = dc.getTextWidthInPixels(m[1] as Lang.String, labelFont);
             var colW = (lblW > valW) ? lblW : valW;
             // Extent left and right of x; a charging bolt only adds on the right.
-            var bolt   = (m[4] == true) ? boltWidth(dc.getFontHeight(valueFont)) : 0;
+            var bolt   = (m[4] == true) ? boltWidth(metricFontH(valueFont)) : 0;
             var leftE  = colW / 2;
             var rightE = colW / 2;
             if ((valW / 2) + bolt > rightE) { rightE = (valW / 2) + bolt; }
@@ -517,13 +575,13 @@ class RidgelineView extends WatchUi.WatchFace {
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    hidden function drawNotificationDot(dc, cx, h) {
-        var count = System.getDeviceSettings().notificationCount;
+    hidden function drawNotificationDot(dc, settings as System.DeviceSettings) {
+        var count = settings.notificationCount;
         if (count == null || count <= 0) {
             return;
         }
         dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(cx, h * 0.115, 4);
+        dc.fillCircle(mCx, mH * 0.115, 4);
     }
 
     // ------------------------------------------------------------ lifecycle
@@ -535,6 +593,7 @@ class RidgelineView extends WatchUi.WatchFace {
 
     function onExitSleep() {
         mLowPower = false;
+        mMinuteKey = -1;    // first frame after waking is always rebuilt
         WatchUi.requestUpdate();
     }
 }
