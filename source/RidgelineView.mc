@@ -12,7 +12,9 @@ using Toybox.Application;
 class RidgelineView extends WatchUi.WatchFace {
 
     hidden const LABEL_COLOR = 0x555555;
-    hidden const DIM_COLOR   = 0x333333;
+    // The MIP palette has four levels per channel (00/55/AA/FF), so there is
+    // no grey between black and 0x555555; the track is set apart by width.
+    hidden const DIM_COLOR   = 0x555555;
     hidden const LABEL_COLOR_BRIGHT = 0xAAAAAA;
     hidden const CHARGING_COLOR = 0x55FF55;
 
@@ -147,9 +149,10 @@ class RidgelineView extends WatchUi.WatchFace {
         var goal    = (info.stepGoal == null || info.stepGoal <= 0) ? 10000 : info.stepGoal;
         var radius  = (w / 2) - 5;
 
-        dc.setPenWidth(6);
+        dc.setPenWidth(2);
         dc.setColor(DIM_COLOR, Graphics.COLOR_TRANSPARENT);
         dc.drawCircle(cx, cy, radius);
+        dc.setPenWidth(6);
 
         // A completed lap stays as a full circle in its own colour; the next
         // lap sweeps over it.
