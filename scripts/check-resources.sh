@@ -24,20 +24,21 @@ xml_files() {
     { echo manifest.xml; git ls-files 'resources/*.xml'; } | sort
 }
 
-# Every NAME after a prefix like "@Strings." in the given files, one per line.
+# The extractors below wrap grep in `|| true`: under pipefail a file with no
+# match must give an empty list, not end the script before the report.
 refs() {
     local prefix=$1; shift
     { grep -ohE "${prefix}[A-Za-z0-9_]+" "$@" || true; } | sed "s/^${prefix}//" | sort -u
 }
 
-# Every id="NAME" on lines containing <tag in a file.
+# id must be on the opening tag itself (<string id="..."), as in all of
+# resources/ today; an id on a continuation line is not seen.
 ids() {
     local tag=$1 file=$2
     { grep -oE "<${tag}[^>]*id=\"[^\"]+\"" "$file" || true; } |
         sed -E 's/.*id="([^"]+)".*/\1/' | sort -u
 }
 
-# First-argument string literals of the named function calls in source/.
 call_keys() {
     local fn
     for fn in "$@"; do
@@ -74,7 +75,9 @@ done > "$tmp/out_props_undefined"
 # read in a loop from RidgelineMetrics.COLUMN_KEYS.
 {
     call_keys getSetting
-    { grep -hE 'COLUMN_KEYS *=' source/*.mc || true; } | grep -oE '"[A-Za-z0-9_]+"' | tr -d '"'
+    # The whole initializer, from "COLUMN_KEYS =" to its closing "]", so a
+    # multi-line array still counts.
+    { sed -n '/COLUMN_KEYS *=/,/]/p' source/*.mc | grep -oE '"[A-Za-z0-9_]+"' || true; } | tr -d '"'
 } | sort -u > "$tmp/read_keys"
 # Any key the source names: the reads above plus the on-watch menu's calls.
 {
