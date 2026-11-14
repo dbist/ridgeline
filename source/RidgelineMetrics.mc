@@ -64,10 +64,36 @@ module RidgelineMetrics {
         return (id instanceof Lang.Number) && id >= 0 && id <= LAST_ID;
     }
 
-    // The heart-rate history fallback, reused for up to HR_HISTORY_SECS.
-    var hrHistory   = null;
+    // Values that change every few minutes at most are fetched at most once
+    // per CACHE_SECS rather than every frame (issues #35, #54). *At is the
+    // fetch time in seconds (Time.now().value()), null before the first.
+    const CACHE_SECS = 60;
+    var hrHistory   = null;    // heart-rate history fallback
     var hrHistoryAt = null;
-    const HR_HISTORY_SECS = 60;
+    var bodyBattery   = null;  // latest(:getBodyBatteryHistory)
+    var bodyBatteryAt = null;
+    var stressHist    = null;  // latest(:getStressHistory)
+    var stressHistAt  = null;
+    var sunCache   = null;     // sunEvent() result
+    var sunAt      = null;
+    var sunUntil   = null;     // the cached event's time in seconds, or null
+    var sun24      = null;     // is24Hour the cached text was built with
+
+    // A value fetched at `at` can still be used at `now`. A negative age
+    // means the clock moved back (a manual change or a time sync): treat
+    // that as stale, or the value would stick until the clock caught up.
+    function isFresh(now as Lang.Number, at) as Lang.Boolean {
+        return at != null && now >= at && now - at < CACHE_SECS;
+    }
+
+    // The cached sunEvent() can still be used: fresh, its event not yet
+    // passed (so RISE/SET flips on time, not up to a minute late), and built
+    // for the same 12/24-hour mode.
+    function sunCacheValid(now as Lang.Number, at, until, cached24,
+            is24Hour as Lang.Boolean) as Lang.Boolean {
+        return isFresh(now, at) && (until == null || now < until) &&
+            cached24 == is24Hour;
+    }
 
     // Labels stay within five characters so three columns fit. info, stats
     // and settings are the frame's single ActivityMonitor.getInfo(),
@@ -107,12 +133,22 @@ module RidgelineMetrics {
                     (battery <= 15) ? LOW_BATTERY : white];
         }
         if (id == BODY_BATTERY) {
-            return [fmt(latest(:getBodyBatteryHistory)), "BODY", white];
+            var now = Time.now().value();
+            if (!isFresh(now, bodyBatteryAt)) {
+                bodyBattery   = latest(:getBodyBatteryHistory);
+                bodyBatteryAt = now;
+            }
+            return [fmt(bodyBattery), "BODY", white];
         }
         if (id == STRESS) {
             var stress = (info has :stressScore) ? info.stressScore : null;
             if (stress == null) {
-                stress = latest(:getStressHistory);
+                var now = Time.now().value();
+                if (!isFresh(now, stressHistAt)) {
+                    stressHist   = latest(:getStressHistory);
+                    stressHistAt = now;
+                }
+                stress = stressHist;
             }
             return [fmt(stress), "STRS", white];
         }
@@ -184,8 +220,21 @@ module RidgelineMetrics {
     // null without the Positioning permission, which only exposes those
     // cached fixes (it does not turn on GPS).
     function sunEvent(is24Hour as Lang.Boolean) as Lang.Array {
+        var now = Time.now().value();
+        if (!sunCacheValid(now, sunAt, sunUntil, sun24, is24Hour)) {
+            var e = sunEventFetch(is24Hour);
+            sunCache = [e[0], e[1], e[2]];
+            sunUntil = e[3];
+            sunAt    = now;
+            sun24    = is24Hour;
+        }
+        return sunCache as Lang.Array;
+    }
+
+    // [text, label, colour, event time in seconds or null].
+    function sunEventFetch(is24Hour as Lang.Boolean) as Lang.Array {
         var white = Graphics.COLOR_WHITE;
-        var none  = ["--", "RISE", white];
+        var none  = ["--", "RISE", white, null];
         if (!(Toybox has :Weather) || !(Weather has :getSunrise) ||
             !(Weather has :getSunset)) {
             return none;
@@ -200,14 +249,14 @@ module RidgelineMetrics {
         var rise  = Weather.getSunrise(loc, today);
         var set   = Weather.getSunset(loc, today);
         if (rise != null && now.lessThan(rise)) {
-            return [clock(rise, is24Hour), "RISE", white];
+            return [clock(rise, is24Hour), "RISE", white, rise.value()];
         }
         if (set != null && now.lessThan(set)) {
-            return [clock(set, is24Hour), "SET", white];
+            return [clock(set, is24Hour), "SET", white, set.value()];
         }
         var tomorrow = today.add(new Time.Duration(Gregorian.SECONDS_PER_DAY));
         rise = Weather.getSunrise(loc, tomorrow);
-        return (rise == null) ? none : [clock(rise, is24Hour), "RISE", white];
+        return (rise == null) ? none : [clock(rise, is24Hour), "RISE", white, rise.value()];
     }
 
     function location() {
@@ -272,10 +321,7 @@ module RidgelineMetrics {
         }
 
         var now = Time.now().value();
-        // A negative age means the clock moved back: refetch, don't wait for
-        // it to catch up.
-        if (hrHistoryAt == null || now < hrHistoryAt ||
-            now - hrHistoryAt >= HR_HISTORY_SECS) {
+        if (!isFresh(now, hrHistoryAt)) {
             hrHistory   = heartRateHistory();
             hrHistoryAt = now;
         }
