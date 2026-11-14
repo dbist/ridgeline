@@ -64,9 +64,17 @@ module RidgelineMetrics {
         return (id instanceof Lang.Number) && id >= 0 && id <= LAST_ID;
     }
 
-    // Labels stay within five characters so three columns fit.
-    function read(id as Lang.Number) as Lang.Array {
-        var m = readFull(id);
+    // The heart-rate history fallback, reused for up to HR_HISTORY_SECS.
+    var hrHistory   = null;
+    var hrHistoryAt = null;
+    const HR_HISTORY_SECS = 60;
+
+    // Labels stay within five characters so three columns fit. info, stats
+    // and settings are the frame's single ActivityMonitor.getInfo(),
+    // System.getSystemStats() and System.getDeviceSettings() reads.
+    function read(id as Lang.Number, info as ActivityMonitor.Info,
+            stats as System.Stats, settings as System.DeviceSettings) as Lang.Array {
+        var m = readFull(id, info, stats, settings);
         return [m[0], m[1], m[2], compact(m[0])];
     }
 
@@ -83,9 +91,9 @@ module RidgelineMetrics {
         return (n / 1000.0).format("%.1f") + "k";
     }
 
-    function readFull(id as Lang.Number) as Lang.Array {
+    function readFull(id as Lang.Number, info as ActivityMonitor.Info,
+            stats as System.Stats, settings as System.DeviceSettings) as Lang.Array {
         var white = Graphics.COLOR_WHITE;
-        var info  = ActivityMonitor.getInfo();
 
         if (id == HEART_RATE) {
             return [fmt(heartRate()), "BPM", white];
@@ -94,7 +102,7 @@ module RidgelineMetrics {
             return [fmt(info.steps), "STEPS", white];
         }
         if (id == BATTERY) {
-            var battery = System.getSystemStats().battery;
+            var battery = stats.battery;
             return [battery.format("%d") + "%", "BATT",
                     (battery <= 15) ? LOW_BATTERY : white];
         }
@@ -122,13 +130,11 @@ module RidgelineMetrics {
         }
         if (id == SOLAR) {
             // Solar input now, 0-100 %. Gold so it reads as sunlight.
-            var stats = System.getSystemStats();
             var sun = (stats has :solarIntensity) ? stats.solarIntensity : null;
             if (sun != null && sun < 0) { sun = null; }
             return [(sun == null) ? "--" : sun.format("%d") + "%", "SOLAR", SOLAR_COLOR];
         }
         if (id == BATTERY_DAYS) {
-            var stats = System.getSystemStats();
             var days = (stats has :batteryInDays) ? stats.batteryInDays : null;
             // A Float. Whole days floor (23.7 -> 23), but under one day
             // shows "<1": flooring to "0" would read as a dead battery.
@@ -138,10 +144,10 @@ module RidgelineMetrics {
             return [fmt(days), "DAYS", white];
         }
         if (id == SUN_EVENT) {
-            return sunEvent();
+            return sunEvent(settings.is24Hour);
         }
         if (id == ALTITUDE) {
-            return [fmt(altitude()), "ALT", white];
+            return [fmt(altitude(settings)), "ALT", white];
         }
         return ["--", "", white];
     }
@@ -177,7 +183,7 @@ module RidgelineMetrics {
     // observation or else the last activity fix; "--" without one. Both are
     // null without the Positioning permission, which only exposes those
     // cached fixes (it does not turn on GPS).
-    function sunEvent() as Lang.Array {
+    function sunEvent(is24Hour as Lang.Boolean) as Lang.Array {
         var white = Graphics.COLOR_WHITE;
         var none  = ["--", "RISE", white];
         if (!(Toybox has :Weather) || !(Weather has :getSunrise) ||
@@ -194,14 +200,14 @@ module RidgelineMetrics {
         var rise  = Weather.getSunrise(loc, today);
         var set   = Weather.getSunset(loc, today);
         if (rise != null && now.lessThan(rise)) {
-            return [clock(rise), "RISE", white];
+            return [clock(rise, is24Hour), "RISE", white];
         }
         if (set != null && now.lessThan(set)) {
-            return [clock(set), "SET", white];
+            return [clock(set, is24Hour), "SET", white];
         }
         var tomorrow = today.add(new Time.Duration(Gregorian.SECONDS_PER_DAY));
         rise = Weather.getSunrise(loc, tomorrow);
-        return (rise == null) ? none : [clock(rise), "RISE", white];
+        return (rise == null) ? none : [clock(rise, is24Hour), "RISE", white];
     }
 
     function location() {
@@ -217,10 +223,10 @@ module RidgelineMetrics {
 
     // "16:41" in 24-hour mode, "4:41" in 12-hour mode (no AM/PM: RISE and
     // SET already say which half of the day it is).
-    function clock(moment as Time.Moment) as Lang.String {
+    function clock(moment as Time.Moment, is24Hour as Lang.Boolean) as Lang.String {
         var t = Gregorian.info(moment, Time.FORMAT_SHORT);
         var hour = t.hour;
-        if (!System.getDeviceSettings().is24Hour) {
+        if (!is24Hour) {
             hour = hour % 12;
             if (hour == 0) { hour = 12; }
         }
@@ -228,7 +234,7 @@ module RidgelineMetrics {
     }
 
     // Altitude in the watch's elevation units: metres, or feet for statute.
-    function altitude() {
+    function altitude(settings as System.DeviceSettings) {
         var metres = null;
         var activity = Activity.getActivityInfo();
         if (activity != null && activity.altitude != null) {
@@ -246,7 +252,7 @@ module RidgelineMetrics {
         if (metres == null) {
             return null;
         }
-        if (System.getDeviceSettings().elevationUnits == System.UNIT_STATUTE) {
+        if (settings.elevationUnits == System.UNIT_STATUTE) {
             return metres * 3.28084;
         }
         return metres;
@@ -257,12 +263,26 @@ module RidgelineMetrics {
     }
 
     // Live heart rate, else the most recent sample from the daily history.
+    // The live value is read every frame; the history fallback at most once
+    // a minute, since its samples are minutes apart anyway.
     function heartRate() {
         var activity = Activity.getActivityInfo();
         if (activity != null && activity.currentHeartRate != null) {
             return activity.currentHeartRate;
         }
 
+        var now = Time.now().value();
+        // A negative age means the clock moved back: refetch, don't wait for
+        // it to catch up.
+        if (hrHistoryAt == null || now < hrHistoryAt ||
+            now - hrHistoryAt >= HR_HISTORY_SECS) {
+            hrHistory   = heartRateHistory();
+            hrHistoryAt = now;
+        }
+        return hrHistory;
+    }
+
+    function heartRateHistory() {
         try {
             var history = ActivityMonitor.getHeartRateHistory(1, true);
             if (history != null) {
