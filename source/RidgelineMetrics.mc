@@ -272,7 +272,10 @@ module RidgelineMetrics {
         }
 
         var now = Time.now().value();
-        if (hrHistoryAt == null || now - hrHistoryAt >= HR_HISTORY_SECS) {
+        // A negative age means the clock moved back: refetch, don't wait for
+        // it to catch up.
+        if (hrHistoryAt == null || now < hrHistoryAt ||
+            now - hrHistoryAt >= HR_HISTORY_SECS) {
             hrHistory   = heartRateHistory();
             hrHistoryAt = now;
         }
