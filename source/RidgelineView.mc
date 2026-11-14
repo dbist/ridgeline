@@ -50,12 +50,13 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden var mValueY = 0.0;  // metric value row
     hidden var mLabelY = 0.0;  // metric label row
 
-    // Rebuilt when the minute or the local day changes (layoutMinute). A
-    // 12/24-hour change on the watch therefore shows from the next minute,
-    // or on wrist raise. The day is part of the key because minute-of-day
-    // repeats: a clock set forward by whole days would keep the old date.
+    // Rebuilt when the minute, the local day or the 12/24-hour setting
+    // changes (layoutMinute). The day is part of the key because
+    // minute-of-day repeats: a clock set forward by whole days would keep the
+    // old date.
     hidden var mMinuteKey  = -1;
     hidden var mDayKey     = -1;
+    hidden var mIs24Key    = null;
     hidden var mDateText   = "";
     hidden var mTimeText   = "";
     hidden var mTimeFont   = Graphics.FONT_NUMBER_HOT;
@@ -167,10 +168,12 @@ class RidgelineView extends WatchUi.WatchFace {
 
         var minuteKey = (clock.hour * 60) + clock.min;
         var dayKey    = Time.today().value();
-        if (minuteKey != mMinuteKey || dayKey != mDayKey) {
+        if (minuteKey != mMinuteKey || dayKey != mDayKey ||
+            settings.is24Hour != mIs24Key) {
             layoutMinute(dc, clock, settings.is24Hour);
             mMinuteKey = minuteKey;
             mDayKey    = dayKey;
+            mIs24Key   = settings.is24Hour;
         }
 
         if (mShowRing) {
