@@ -16,6 +16,15 @@ function cacheFreshUntilSixtySeconds(logger as Test.Logger) as Lang.Boolean {
         !RidgelineMetrics.isFresh(1060, 1000);
 }
 
+// The clock moved back after the fetch: stale, even though now - at is
+// below CACHE_SECS.
+(:test)
+function cacheStaleWhenClockMovesBack(logger as Test.Logger) as Lang.Boolean {
+    return !RidgelineMetrics.isFresh(999, 1000) &&
+        !RidgelineMetrics.isFresh(1000 - 3600, 1000) &&
+        !RidgelineMetrics.sunCacheValid(999, 1000, 2000, true, true);
+}
+
 (:test)
 function sunCacheValidBeforeEvent(logger as Test.Logger) as Lang.Boolean {
     return RidgelineMetrics.sunCacheValid(1030, 1000, 1031, true, true);

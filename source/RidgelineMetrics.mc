@@ -79,9 +79,11 @@ module RidgelineMetrics {
     var sunUntil   = null;     // the cached event's time in seconds, or null
     var sun24      = null;     // is24Hour the cached text was built with
 
-    // A value fetched at `at` can still be used at `now`.
+    // A value fetched at `at` can still be used at `now`. A negative age
+    // means the clock moved back (a manual change or a time sync): treat
+    // that as stale, or the value would stick until the clock caught up.
     function isFresh(now as Lang.Number, at) as Lang.Boolean {
-        return at != null && now - at < CACHE_SECS;
+        return at != null && now >= at && now - at < CACHE_SECS;
     }
 
     // The cached sunEvent() can still be used: fresh, its event not yet
