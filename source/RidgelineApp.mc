@@ -1,39 +1,42 @@
-using Toybox.Application;
-using Toybox.WatchUi;
-using Toybox.Complications;
+import Toybox.Application;
+import Toybox.Lang;
+import Toybox.WatchUi;
+import Toybox.Complications;
 
 class RidgelineApp extends Application.AppBase {
 
-    hidden var mView;
+    hidden var mView as RidgelineView or Null = null;
 
     function initialize() {
         AppBase.initialize();
     }
 
-    function onStart(state) {
+    function onStart(state as Dictionary or Null) as Void {
     }
 
-    function onStop(state) {
+    function onStop(state as Dictionary or Null) as Void {
     }
 
-    function getInitialView() {
-        mView = new RidgelineView();
+    function getInitialView() as [Views] or [Views, InputDelegates] {
+        var view = new RidgelineView();
+        mView = view;
         if (WatchUi has :WatchFaceDelegate) {
-            return [ mView, new RidgelineDelegate(mView) ];
+            return [ view, new RidgelineDelegate(view) ];
         }
-        return [ mView ];
+        return [ view ];
     }
 
     // Reached by holding UP/MENU -> Watch Face -> Ridgeline.
-    function getSettingsView() {
+    function getSettingsView() as [Views] or [Views, InputDelegates] or Null {
         var menu = new RidgelineSettingsMenu();
         return [ menu, new RidgelineSettingsDelegate(menu) ];
     }
 
     // Called when settings change, from Garmin Connect or the on-watch menu.
-    function onSettingsChanged() {
-        if (mView != null) {
-            mView.loadSettings();
+    function onSettingsChanged() as Void {
+        var view = mView;
+        if (view != null) {
+            view.loadSettings();
         }
         WatchUi.requestUpdate();
     }
@@ -43,18 +46,18 @@ class RidgelineApp extends Application.AppBase {
 // hold; onTap only reaches a watch face in config mode.
 class RidgelineDelegate extends WatchUi.WatchFaceDelegate {
 
-    hidden var mView;
+    hidden var mView as RidgelineView;
 
-    function initialize(view) {
+    function initialize(view as RidgelineView) {
         WatchFaceDelegate.initialize();
         mView = view;
     }
 
-    function onPowerBudgetExceeded(powerInfo) {
+    function onPowerBudgetExceeded(powerInfo as WatchFacePowerInfo) as Void {
         mView.onPartialBudgetExceeded();
     }
 
-    function onPress(clickEvent) {
+    function onPress(clickEvent as ClickEvent) as Boolean {
         if (!(Toybox has :Complications) || !(Complications has :exitTo)) {
             return false;
         }

@@ -1,5 +1,5 @@
-using Toybox.Lang;
-using Toybox.Test;
+import Toybox.Lang;
+import Toybox.Test;
 
 // Cache freshness for the per-minute metric reads (issue #54). (:test) code
 // is left out of normal builds; see CONTRIBUTING.md, "Running the unit tests".

@@ -1,5 +1,5 @@
-using Toybox.Lang;
-using Toybox.Test;
+import Toybox.Lang;
+import Toybox.Test;
 
 // (:test) code is left out of normal builds. How to run: CONTRIBUTING.md,
 // "Running the unit tests".

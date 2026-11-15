@@ -30,8 +30,9 @@ They run in the simulator, not in CI. With `SDK` set as in the README's
 ## What to include in a pull request
 
 1. **It builds.** The PR should leave `monkeyc` able to produce the device
-   binary without errors. If you change code that is touched by strict type
-   checking, note whether you also ran `monkeyc -l 3` and what it reported.
+   binary without errors or warnings. `monkey.jungle` enforces strict type
+   checking (level 3), so a plain build already fails on a missing annotation
+   or an unsafe nullable; see the README, *Strict type checking*.
    If you touch `resources/` or setting keys, run `scripts/check-resources.sh`
    too: CI cannot compile, so it is what catches a missing string or property.
 2. **Say how you checked it.** Watch faces are device-specific because of font

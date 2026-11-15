@@ -1,13 +1,14 @@
-using Toybox.Activity;
-using Toybox.ActivityMonitor;
-using Toybox.Complications;
-using Toybox.Graphics;
-using Toybox.Lang;
-using Toybox.SensorHistory;
-using Toybox.System;
-using Toybox.Time;
-using Toybox.Time.Gregorian;
-using Toybox.Weather;
+import Toybox.Activity;
+import Toybox.ActivityMonitor;
+import Toybox.Complications;
+import Toybox.Graphics;
+import Toybox.Lang;
+import Toybox.Position;
+import Toybox.SensorHistory;
+import Toybox.System;
+import Toybox.Time;
+import Toybox.Time.Gregorian;
+import Toybox.Weather;
 
 // The metrics a column can show (issue #20), and how to read each one.
 //
@@ -33,8 +34,8 @@ module RidgelineMetrics {
 
     const SOLAR_COLOR  = 0xFFAA00;
 
-    const COLUMN_KEYS     = ["LeftMetric", "MiddleMetric", "RightMetric"];
-    const COLUMN_DEFAULTS = [HEART_RATE, STEPS, BATTERY];
+    const COLUMN_KEYS     = ["LeftMetric", "MiddleMetric", "RightMetric"] as Array<String>;
+    const COLUMN_DEFAULTS = [HEART_RATE, STEPS, BATTERY] as Array<Number>;
 
     const LOW_BATTERY = 0xFF0000;
 
@@ -60,7 +61,7 @@ module RidgelineMetrics {
                 Rez.Strings.RightMetricTitle];
     }
 
-    function isValid(id) as Lang.Boolean {
+    function isValid(id as Object or Null) as Lang.Boolean {
         return (id instanceof Lang.Number) && id >= 0 && id <= LAST_ID;
     }
 
@@ -68,28 +69,29 @@ module RidgelineMetrics {
     // per CACHE_SECS rather than every frame (issues #35, #54). *At is the
     // fetch time in seconds (Time.now().value()), null before the first.
     const CACHE_SECS = 60;
-    var hrHistory   = null;    // heart-rate history fallback
-    var hrHistoryAt = null;
-    var bodyBattery   = null;  // latest(:getBodyBatteryHistory)
-    var bodyBatteryAt = null;
-    var stressHist    = null;  // latest(:getStressHistory)
-    var stressHistAt  = null;
-    var sunCache   = null;     // sunEvent() result
-    var sunAt      = null;
-    var sunUntil   = null;     // the cached event's time in seconds, or null
-    var sun24      = null;     // is24Hour the cached text was built with
+    var hrHistory     as Number or Null  = null;  // heart-rate history fallback
+    var hrHistoryAt   as Number or Null  = null;
+    var bodyBattery   as Numeric or Null = null;  // latest(:getBodyBatteryHistory)
+    var bodyBatteryAt as Number or Null  = null;
+    var stressHist    as Numeric or Null = null;  // latest(:getStressHistory)
+    var stressHistAt  as Number or Null  = null;
+    var sunCache      as Array or Null   = null;  // sunEvent() result
+    var sunAt         as Number or Null  = null;
+    var sunUntil      as Number or Null  = null;  // the cached event's time in seconds, or null
+    var sun24         as Boolean or Null = null;  // is24Hour the cached text was built with
 
     // A value fetched at `at` can still be used at `now`. A negative age
     // means the clock moved back (a manual change or a time sync): treat
     // that as stale, or the value would stick until the clock caught up.
-    function isFresh(now as Lang.Number, at) as Lang.Boolean {
+    function isFresh(now as Lang.Number, at as Number or Null) as Lang.Boolean {
         return at != null && now >= at && now - at < CACHE_SECS;
     }
 
     // The cached sunEvent() can still be used: fresh, its event not yet
     // passed (so RISE/SET flips on time, not up to a minute late), and built
     // for the same 12/24-hour mode.
-    function sunCacheValid(now as Lang.Number, at, until, cached24,
+    function sunCacheValid(now as Lang.Number, at as Number or Null,
+            until as Number or Null, cached24 as Boolean or Null,
             is24Hour as Lang.Boolean) as Lang.Boolean {
         return isFresh(now, at) && (until == null || now < until) &&
             cached24 == is24Hour;
@@ -101,7 +103,7 @@ module RidgelineMetrics {
     function read(id as Lang.Number, info as ActivityMonitor.Info,
             stats as System.Stats, settings as System.DeviceSettings) as Lang.Array {
         var m = readFull(id, info, stats, settings);
-        return [m[0], m[1], m[2], compact(m[0])];
+        return [m[0], m[1], m[2], compact(m[0] as String)];
     }
 
     // "12345" -> "12.3k", "123456" -> "123k"; anything shorter, or not a
@@ -191,7 +193,8 @@ module RidgelineMetrics {
     // The system complication behind a metric, for tap-to-open (issue #21),
     // or null. label disambiguates the sun event (RISE or SET). Battery days
     // has no complication of its own, so it opens the battery one.
-    function complicationType(id as Lang.Number, label as Lang.String) {
+    function complicationType(id as Lang.Number,
+            label as Lang.String) as Complications.Type or Null {
         if (!(Toybox has :Complications)) {
             return null;
         }
@@ -224,7 +227,7 @@ module RidgelineMetrics {
         if (!sunCacheValid(now, sunAt, sunUntil, sun24, is24Hour)) {
             var e = sunEventFetch(is24Hour);
             sunCache = [e[0], e[1], e[2]];
-            sunUntil = e[3];
+            sunUntil = e[3] as Number or Null;
             sunAt    = now;
             sun24    = is24Hour;
         }
@@ -259,15 +262,19 @@ module RidgelineMetrics {
         return (rise == null) ? none : [clock(rise, is24Hour), "RISE", white, rise.value()];
     }
 
-    function location() {
+    function location() as Position.Location or Null {
         if (Toybox has :Weather) {
             var cond = Weather.getCurrentConditions();
             if (cond != null && cond.observationLocationPosition != null) {
                 return cond.observationLocationPosition;
             }
         }
-        var activity = Activity.getActivityInfo();
-        return (activity == null) ? null : activity.currentLocation;
+        // Declared non-null, but kept guarded like the other reads.
+        var activity = Activity.getActivityInfo() as Activity.Info or Null;
+        if (activity == null) {
+            return null;
+        }
+        return activity.currentLocation;
     }
 
     // "16:41" in 24-hour mode, "4:41" in 12-hour mode (no AM/PM: RISE and
@@ -283,17 +290,17 @@ module RidgelineMetrics {
     }
 
     // Altitude in the watch's elevation units: metres, or feet for statute.
-    function altitude(settings as System.DeviceSettings) {
-        var metres = null;
+    function altitude(settings as System.DeviceSettings) as Numeric or Null {
+        var metres = null as Numeric or Null;
         var activity = Activity.getActivityInfo();
         if (activity != null && activity.altitude != null) {
-            metres = activity.altitude;
+            metres = activity.altitude as Numeric or Null;
         } else if ((Toybox has :SensorHistory) && (SensorHistory has :getElevationHistory)) {
             try {
                 var iter = SensorHistory.getElevationHistory(
                     { :period => 1, :order => SensorHistory.ORDER_NEWEST_FIRST });
                 var sample = (iter == null) ? null : iter.next();
-                metres = (sample == null) ? null : sample.data;
+                metres = (sample == null) ? null : sample.data as Numeric or Null;
             } catch (e) {
                 metres = null;
             }
@@ -307,14 +314,14 @@ module RidgelineMetrics {
         return metres;
     }
 
-    function fmt(value) as Lang.String {
+    function fmt(value as Numeric or Null) as Lang.String {
         return (value == null) ? "--" : value.toNumber().format("%d");
     }
 
     // Live heart rate, else the most recent sample from the daily history.
     // The live value is read every frame; the history fallback at most once
     // a minute, since its samples are minutes apart anyway.
-    function heartRate() {
+    function heartRate() as Number or Null {
         var activity = Activity.getActivityInfo();
         if (activity != null && activity.currentHeartRate != null) {
             return activity.currentHeartRate;
@@ -328,7 +335,7 @@ module RidgelineMetrics {
         return hrHistory;
     }
 
-    function heartRateHistory() {
+    function heartRateHistory() as Number or Null {
         try {
             var history = ActivityMonitor.getHeartRateHistory(1, true);
             if (history != null) {
@@ -348,7 +355,7 @@ module RidgelineMetrics {
     // Most recent valid (0-100) sample from a SensorHistory series, or null.
     // Looks back a few samples: the newest slot is often null between
     // readings or while the watch is off-wrist.
-    function latest(method as Lang.Symbol) {
+    function latest(method as Lang.Symbol) as Numeric or Null {
         if (!(Toybox has :SensorHistory) || !(SensorHistory has method)) {
             return null;
         }

@@ -1,4 +1,4 @@
-using Toybox.Lang;
+import Toybox.Lang;
 
 // Kept free of Dc and ActivityMonitor so (:test) cases can call it directly.
 module RidgelineRing {

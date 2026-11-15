@@ -1,13 +1,14 @@
-using Toybox.WatchUi;
-using Toybox.Graphics;
-using Toybox.System;
-using Toybox.Lang;
-using Toybox.Math;
-using Toybox.Time;
-using Toybox.Time.Gregorian;
-using Toybox.ActivityMonitor;
-using Toybox.Activity;
-using Toybox.Application;
+import Toybox.WatchUi;
+import Toybox.Graphics;
+import Toybox.System;
+import Toybox.Lang;
+import Toybox.Math;
+import Toybox.Time;
+import Toybox.Time.Gregorian;
+import Toybox.ActivityMonitor;
+import Toybox.Activity;
+import Toybox.Application;
+import Toybox.Complications;
 
 class RidgelineView extends WatchUi.WatchFace {
 
@@ -20,58 +21,59 @@ class RidgelineView extends WatchUi.WatchFace {
 
     // Step-ring colours for each multiple of the goal past the first: light
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
-    hidden const LAP_COLORS  = [0x55FF55, 0x00AAFF, 0xAA55FF];
+    hidden const LAP_COLORS  = [0x55FF55, 0x00AAFF, 0xAA55FF] as Array<Number>;
 
-    hidden var mLowPower  = false;
+    hidden var mLowPower as Boolean = false;
 
     // mSecsBox (a secondsBox result) is null when a partial redraw must not
     // run; mPartialOk stays false once the power budget is exceeded.
-    hidden var mSecsBox   = null;
-    hidden var mPartialOk = true;
-    hidden var mSecsW     = null;
-    hidden var mAccent    = 0xFF5500;
-    hidden var mShowSecs  = true;
-    hidden var mShowRing  = true;
-    hidden var mLapColors = LAP_COLORS;
+    hidden var mSecsBox   as Array<Number or Boolean> or Null = null;
+    hidden var mPartialOk as Boolean = true;
+    hidden var mSecsW     as Number or Null = null;
+    hidden var mAccent    as Number = 0xFF5500;
+    hidden var mShowSecs  as Boolean = true;
+    hidden var mShowRing  as Boolean = true;
+    hidden var mLapColors as Array<Number> = LAP_COLORS;
     hidden var mColumns as Lang.Array<Lang.Number> = RidgelineMetrics.COLUMN_DEFAULTS;
     // Tap targets for the metric columns, from the last onUpdate:
     // [[left, top, right, bottom, complicationType or null], ...].
     hidden var mHitBoxes as Lang.Array = [];
 
     // Fixed per screen, from onLayout.
-    hidden var mW = 0;
-    hidden var mH = 0;
-    hidden var mCx = 0;
-    hidden var mCy = 0;
-    hidden var mThaiH  = 0;    // FONT_NUMBER_THAI_HOT
-    hidden var mHotH   = 0;    // FONT_NUMBER_HOT
-    hidden var mTinyH  = 0;    // FONT_TINY
-    hidden var mXtinyH = 0;    // FONT_XTINY
-    hidden var mValueY = 0.0;  // metric value row
-    hidden var mLabelY = 0.0;  // metric label row
+    hidden var mW as Number = 0;
+    hidden var mH as Number = 0;
+    hidden var mCx as Number = 0;
+    hidden var mCy as Number = 0;
+    hidden var mThaiH  as Number = 0;    // FONT_NUMBER_THAI_HOT
+    hidden var mHotH   as Number = 0;    // FONT_NUMBER_HOT
+    hidden var mTinyH  as Number = 0;    // FONT_TINY
+    hidden var mXtinyH as Number = 0;    // FONT_XTINY
+    hidden var mValueY as Float = 0.0;   // metric value row
+    hidden var mLabelY as Float = 0.0;   // metric label row
 
     // Rebuilt when the minute, the local day or the 12/24-hour setting
     // changes (layoutMinute). The day is part of the key because
     // minute-of-day repeats: a clock set forward by whole days would keep the
     // old date.
-    hidden var mMinuteKey  = -1;
-    hidden var mDayKey     = -1;
-    hidden var mIs24Key    = null;
-    hidden var mDateText   = "";
-    hidden var mTimeText   = "";
-    hidden var mTimeFont   = Graphics.FONT_NUMBER_HOT;
-    hidden var mTimeBaseY  = 0.0;
-    hidden var mMerText    = null;  // "AM"/"PM", or null in 24-hour mode
-    hidden var mMerX       = 0.0;
-    hidden var mMerY       = 0.0;
-    hidden var mSecsLayout = null;  // secondsBox() for the current time text
+    hidden var mMinuteKey  as Number = -1;
+    hidden var mDayKey     as Number = -1;
+    hidden var mIs24Key    as Boolean or Null = null;
+    hidden var mDateText   as String = "";
+    hidden var mTimeText   as String = "";
+    hidden var mTimeFont   as Graphics.FontType = Graphics.FONT_NUMBER_HOT;
+    hidden var mTimeBaseY  as Float = 0.0;
+    hidden var mMerText    as String or Null = null;  // "AM"/"PM", or null in 24-hour mode
+    hidden var mMerX       as Numeric = 0.0;
+    hidden var mMerY       as Numeric = 0.0;
+    // secondsBox() for the current time text.
+    hidden var mSecsLayout as Array<Number or Boolean> or Null = null;
 
     function initialize() {
         WatchFace.initialize();
         loadSettings();
     }
 
-    function onLayout(dc) {
+    function onLayout(dc as Dc) as Void {
         mW  = dc.getWidth();
         mH  = dc.getHeight();
         mCx = mW / 2;
@@ -91,22 +93,23 @@ class RidgelineView extends WatchUi.WatchFace {
         mMinuteKey = -1;
     }
 
-    function loadSettings() {
-        mAccent   = getSetting("AccentColor", 0xFF5500);
-        mShowSecs = getSetting("ShowSeconds", true);
-        mShowRing = getSetting("ShowGoalRing", true);
+    function loadSettings() as Void {
+        mAccent   = getSetting("AccentColor", 0xFF5500) as Number;
+        mShowSecs = getSetting("ShowSeconds", true) as Boolean;
+        mShowRing = getSetting("ShowGoalRing", true) as Boolean;
 
         // Which metric each column shows; an unknown id keeps the default.
         var keys = RidgelineMetrics.COLUMN_KEYS;
-        mColumns = [];
+        mColumns = [] as Array<Number>;
         for (var i = 0; i < keys.size(); i++) {
-            var id = getSetting(keys[i], RidgelineMetrics.COLUMN_DEFAULTS[i]);
-            mColumns.add(RidgelineMetrics.isValid(id) ? id : RidgelineMetrics.COLUMN_DEFAULTS[i]);
+            var fallback = RidgelineMetrics.COLUMN_DEFAULTS[i] as Number;
+            var id = getSetting(keys[i], fallback);
+            mColumns.add(RidgelineMetrics.isValid(id) ? (id as Number) : fallback);
         }
 
         // Drop a lap colour that matches the accent, or the first lap past the
         // goal would look identical to the progress towards it.
-        mLapColors = [];
+        mLapColors = [] as Array<Number>;
         for (var i = 0; i < LAP_COLORS.size(); i++) {
             if (LAP_COLORS[i] != mAccent) {
                 mLapColors.add(LAP_COLORS[i]);
@@ -114,8 +117,9 @@ class RidgelineView extends WatchUi.WatchFace {
         }
     }
 
-    hidden function getSetting(key, fallback) {
-        var value = null;
+    hidden function getSetting(key as String,
+            fallback as Properties.ValueType) as Properties.ValueType {
+        var value = null as Properties.ValueType or Null;
         try {
             value = Application.Properties.getValue(key);
         } catch (e) {
@@ -126,7 +130,8 @@ class RidgelineView extends WatchUi.WatchFace {
 
     // Properties can arrive as the wrong type, and a non-Number accent
     // crashes setColor and the lap-colour compare.
-    hidden function coerceSetting(value, fallback) {
+    hidden function coerceSetting(value as Properties.ValueType or Null,
+            fallback as Properties.ValueType) as Properties.ValueType {
         if (fallback instanceof Lang.Boolean) {
             return (value instanceof Lang.Boolean) ? value : fallback;
         }
@@ -136,16 +141,19 @@ class RidgelineView extends WatchUi.WatchFace {
             }
             if (value instanceof Lang.Long || value instanceof Lang.Float ||
                 value instanceof Lang.Double) {
-                return value.toNumber();
+                return (value as Long or Float or Double).toNumber();
             }
             return fallback;
         }
-        return (value == null) ? fallback : value;
+        if (value == null) {
+            return fallback;
+        }
+        return value;
     }
 
     // ---------------------------------------------------------------- draw
 
-    function onUpdate(dc) {
+    function onUpdate(dc as Dc) as Void {
         if (dc has :setAntiAlias) {
             dc.setAntiAlias(true);
         }
@@ -188,7 +196,7 @@ class RidgelineView extends WatchUi.WatchFace {
             // With the wrist down, seconds only stay if onPartialUpdate can
             // keep them current, and that needs a box clear of the digits:
             // the partial update wipes the box before redrawing.
-            var refreshable = canPartialUpdate() && box[4];
+            var refreshable = canPartialUpdate() && (box[4] as Boolean);
             if (!mLowPower || refreshable) {
                 drawSeconds(dc, box, clock.sec);
             }
@@ -202,12 +210,12 @@ class RidgelineView extends WatchUi.WatchFace {
 
     // Everything that changes at most once a minute: date and time text, the
     // time font and where the AM/PM label and the seconds go beside it.
-    hidden function layoutMinute(dc, clock as System.ClockTime, is24Hour as Lang.Boolean) as Void {
+    hidden function layoutMinute(dc as Dc, clock as System.ClockTime, is24Hour as Lang.Boolean) as Void {
         var now = Gregorian.info(Time.now(), Time.FORMAT_MEDIUM);
         mDateText = Lang.format("$1$  $2$ $3$", [
-            now.day_of_week.toUpper(),
+            (now.day_of_week as String).toUpper(),
             now.day.format("%02d"),
-            now.month.toUpper()
+            (now.month as String).toUpper()
         ]);
 
         var hour = clock.hour;
@@ -239,11 +247,15 @@ class RidgelineView extends WatchUi.WatchFace {
         mSecsLayout = secondsBox(dc, rightX, mTimeBaseY, fontH);
     }
 
-    hidden function drawStepRing(dc, info as ActivityMonitor.Info) {
+    hidden function drawStepRing(dc as Dc, info as ActivityMonitor.Info) as Void {
         var cx      = mCx;
         var cy      = mCy;
-        var steps   = (info.steps == null) ? 0 : info.steps;
-        var goal    = (info.stepGoal == null || info.stepGoal <= 0) ? 10000 : info.stepGoal;
+        // Locals and if statements: the type checker narrows those, not a
+        // ?: over a field.
+        var steps   = info.steps;
+        if (steps == null) { steps = 0; }
+        var goal    = info.stepGoal;
+        if (goal == null || goal <= 0) { goal = 10000; }
         var radius  = (mW / 2) - 5;
 
         dc.setPenWidth(2);
@@ -273,20 +285,20 @@ class RidgelineView extends WatchUi.WatchFace {
 
     // Lap 0 (working towards the goal) is the accent; every lap past the goal
     // cycles through mLapColors.
-    hidden function ringColor(lap) {
+    hidden function ringColor(lap as Number) as Number {
         if (lap == 0) {
             return mAccent;
         }
         return mLapColors[(lap - 1) % mLapColors.size()];
     }
 
-    hidden function drawDate(dc) {
+    hidden function drawDate(dc as Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(mCx, mH * 0.20, Graphics.FONT_SMALL, mDateText,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    hidden function drawTime(dc) {
+    hidden function drawTime(dc as Dc) as Void {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         dc.drawText(mCx, mTimeBaseY, mTimeFont, mTimeText,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -301,7 +313,8 @@ class RidgelineView extends WatchUi.WatchFace {
     // AM/PM sits in the upper right of the time block, mirroring the seconds
     // in the lower right, so 7:00 reads differently morning and evening. It
     // is drawn with the time, so it stays visible in low-power mode.
-    hidden function layoutMeridiem(dc, hour24, rightX, baseY, timeH) as Void {
+    hidden function layoutMeridiem(dc as Dc, hour24 as Number, rightX as Numeric,
+            baseY as Numeric, timeH as Number) as Void {
         var w     = mW;
         var text  = (hour24 < 12) ? "AM" : "PM";
         var font  = Graphics.FONT_XTINY;
@@ -344,7 +357,8 @@ class RidgelineView extends WatchUi.WatchFace {
     // the widest two-digit pair, so the box is stable across the minute and
     // big enough for onPartialUpdate to wipe any previous value. The box is
     // clear of the digits unless a wide time pushed it back over them.
-    hidden function secondsBox(dc, rightX, baseY, timeH) as Lang.Array {
+    hidden function secondsBox(dc as Dc, rightX as Numeric, baseY as Numeric,
+            timeH as Number) as Array<Number or Boolean> {
         var w     = mW;
         var font  = Graphics.FONT_TINY;
         if (mSecsW == null) {
@@ -369,27 +383,28 @@ class RidgelineView extends WatchUi.WatchFace {
         }
 
         return [ x.toNumber(), (y - (secsH / 2)).toNumber(), secsW, secsH,
-                 x >= rightX + 2 ];
+                 x >= rightX + 2 ] as Array<Number or Boolean>;
     }
 
-    hidden function drawSeconds(dc, box as Lang.Array<Lang.Number or Lang.Boolean>,
+    hidden function drawSeconds(dc as Dc, box as Lang.Array<Lang.Number or Lang.Boolean>,
             sec as Lang.Number) as Void {
         var secs = sec.format("%02d");
         dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
-        dc.drawText(box[0], box[1] + (box[3] / 2), Graphics.FONT_TINY, secs,
+        dc.drawText(box[0] as Number, (box[1] as Number) + ((box[3] as Number) / 2),
+            Graphics.FONT_TINY, secs,
             Graphics.TEXT_JUSTIFY_LEFT | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    hidden function canPartialUpdate() {
+    hidden function canPartialUpdate() as Boolean {
         return mPartialOk && (WatchUi.WatchFace has :onPartialUpdate);
     }
 
-    function onPartialUpdate(dc) {
+    function onPartialUpdate(dc as Dc) as Void {
         if (!mShowSecs || mSecsBox == null || !mPartialOk) {
             return;
         }
         var box = mSecsBox as Lang.Array<Lang.Number or Lang.Boolean>;
-        dc.setClip(box[0], box[1], box[2], box[3]);
+        dc.setClip(box[0] as Number, box[1] as Number, box[2] as Number, box[3] as Number);
         dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
         dc.clear();
         if (dc has :setAntiAlias) {
@@ -400,18 +415,18 @@ class RidgelineView extends WatchUi.WatchFace {
 
     // No Dc here, so the seconds already on screen stay until the next full
     // redraw (at most a minute); requestUpdate asks for it sooner.
-    function onPartialBudgetExceeded() {
+    function onPartialBudgetExceeded() as Void {
         mPartialOk = false;
         mSecsBox = null;
         WatchUi.requestUpdate();
     }
 
-    hidden function drawMetrics(dc, info as ActivityMonitor.Info,
-            stats as System.Stats, settings as System.DeviceSettings) {
+    hidden function drawMetrics(dc as Dc, info as ActivityMonitor.Info,
+            stats as System.Stats, settings as System.DeviceSettings) as Void {
         var w = mW;
         var h = mH;
-        var valueFont = Graphics.FONT_TINY;
-        var labelFont = Graphics.FONT_XTINY;
+        var valueFont = Graphics.FONT_TINY as Graphics.FontType;
+        var labelFont = Graphics.FONT_XTINY as Graphics.FontType;
         var valueY = mValueY;
         var labelY = mLabelY;
 
@@ -423,7 +438,7 @@ class RidgelineView extends WatchUi.WatchFace {
         // it. Index 4 flags that, so placement keeps the bolt inside the ring
         // and clear of the next column; the text itself stays centred.
         var charging = (stats has :charging) && (stats.charging == true);
-        var cols = [];
+        var cols = [] as Array<Array>;
         for (var i = 0; i < xs.size(); i++) {
             var m = RidgelineMetrics.read(mColumns[i], info, stats, settings);
             m.add(charging && mColumns[i] == RidgelineMetrics.BATTERY);
@@ -437,7 +452,7 @@ class RidgelineView extends WatchUi.WatchFace {
         var font   = valueFont;
         for (var k = 0; k < passes.size() && places == null; k++) {
             var pass = passes[k] as Lang.Array;
-            font = pass[1];
+            font = pass[1] as Graphics.FontType;
             places = placeColumns(dc, cols, xs, w, h, valueY, labelY,
                 pass[0] as Lang.Number, font, labelFont, k == passes.size() - 1);
         }
@@ -450,21 +465,22 @@ class RidgelineView extends WatchUi.WatchFace {
         var bottom = labelY + (mXtinyH / 2);
         var halfW  = (w * 0.24) / 2;
         var last   = cols.size() - 1;
-        var centers = [];
+        var centers = [] as Array<Numeric>;
         for (var i = 0; i <= last; i++) {
-            centers.add(((places as Lang.Array)[i] as Lang.Array)[0]);
+            centers.add(((places as Lang.Array)[i] as Lang.Array)[0] as Numeric);
         }
         mHitBoxes = [];
 
         for (var i = 0; i <= last; i++) {
-            var m = cols[i] as Lang.Array;
+            var m = cols[i];
             var p = (places as Lang.Array)[i] as Lang.Array;
-            drawColumn(dc, p[0], valueY, labelY, p[1], m[1], m[2],
-                font, labelFont);
+            var x = p[0] as Numeric;
+            drawColumn(dc, x, valueY, labelY, p[1] as String, m[1] as String,
+                m[2] as Number, font, labelFont);
             if (m[4] == true) {
                 var textW = dc.getTextWidthInPixels(p[1] as Lang.String, font);
                 var fontH = metricFontH(font);
-                drawChargingBolt(dc, p[0] + (textW / 2) + (fontH * 0.1), valueY, fontH);
+                drawChargingBolt(dc, x + (textW / 2) + (fontH * 0.1), valueY, fontH);
             }
             var boxL = (i == 0)    ? centers[i] - halfW : (centers[i - 1] + centers[i]) / 2;
             var boxR = (i == last) ? centers[i] + halfW : (centers[i] + centers[i + 1]) / 2;
@@ -475,36 +491,39 @@ class RidgelineView extends WatchUi.WatchFace {
 
     // The metric rows only use FONT_TINY (values) and FONT_XTINY (labels, and
     // values in the last placement pass).
-    hidden function metricFontH(font) as Lang.Number {
+    hidden function metricFontH(font as Graphics.FontType) as Lang.Number {
         return (font == Graphics.FONT_TINY) ? mTinyH : mXtinyH;
     }
 
     // Gap plus bolt, as drawn by drawChargingBolt for a font this tall.
-    hidden function boltWidth(fontH) as Lang.Number {
+    hidden function boltWidth(fontH as Number) as Lang.Number {
         return ((fontH * 0.1) + (fontH * 9 / 30.0)).toNumber() + 1;
     }
 
     // Vertices are in units of fontH / 30, so the bolt scales with the font.
-    hidden function drawChargingBolt(dc, x, y, fontH) {
+    hidden function drawChargingBolt(dc as Dc, x as Numeric, y as Numeric,
+            fontH as Number) as Void {
         var k = fontH / 30.0;
-        var shape = [[5, -8], [0, 1], [4, 1], [3, 8], [9, -1], [5, -1]];
-        var pts = [];
+        var shape = [[5, -8], [0, 1], [4, 1], [3, 8], [9, -1], [5, -1]] as Array<Array<Number>>;
+        var pts = [] as Array<Graphics.Point2D>;
         for (var i = 0; i < shape.size(); i++) {
+            var v = shape[i];
             pts.add([
-                (x + (shape[i][0] * k)).toNumber(),
-                (y + (shape[i][1] * k)).toNumber()
-            ]);
+                (x + (v[0] * k)).toNumber(),
+                (y + (v[1] * k)).toNumber()
+            ] as Graphics.Point2D);
         }
         dc.setColor(CHARGING_COLOR, Graphics.COLOR_TRANSPARENT);
         dc.fillPolygon(pts);
     }
 
     // The complication behind the metric column at (x, y), or null.
-    function complicationAt(x, y) {
+    function complicationAt(x as Number, y as Number) as Complications.Type or Null {
         for (var i = 0; i < mHitBoxes.size(); i++) {
             var b = mHitBoxes[i] as Lang.Array;
-            if (x >= b[0] && x <= b[2] && y >= b[1] && y <= b[3]) {
-                return b[4];
+            if (x >= (b[0] as Numeric) && x <= (b[2] as Numeric) &&
+                y >= (b[1] as Numeric) && y <= (b[3] as Numeric)) {
+                return b[4] as Complications.Type or Null;
             }
         }
         return null;
@@ -513,7 +532,7 @@ class RidgelineView extends WatchUi.WatchFace {
     // Half-width of the area inside the step ring (inner edge less a margin)
     // at height y; text lines are tested at their baseline, where the glyphs
     // end, rather than their centre.
-    hidden function ringHalfWidth(w, h, y) {
+    hidden function ringHalfWidth(w as Number, h as Number, y as Numeric) as Numeric {
         var inner = (w / 2) - 5 - 3 - 4;
         var dy = (y - (h / 2)).abs();
         return (inner > dy) ? Math.sqrt((inner * inner) - (dy * dy)) : 0;
@@ -524,9 +543,10 @@ class RidgelineView extends WatchUi.WatchFace {
     // inward until both its value and its label fit inside the ring. Returns
     // [[x, valueText], ...], or null if neighbours (whichever of value or
     // label is wider) come within a space of each other, unless force.
-    hidden function placeColumns(dc, cols as Lang.Array, xs as Lang.Array,
-            w, h, valueY, labelY, textIdx as Lang.Number, valueFont, labelFont,
-            force as Lang.Boolean) {
+    hidden function placeColumns(dc as Dc, cols as Array<Array>, xs as Array<Float>,
+            w as Number, h as Number, valueY as Float, labelY as Float,
+            textIdx as Lang.Number, valueFont as Graphics.FontType,
+            labelFont as Graphics.FontType, force as Lang.Boolean) as Array or Null {
         var valueBase = valueY + (metricFontH(valueFont) / 2)
             - Graphics.getFontDescent(valueFont);
         var labelBase = labelY + (mXtinyH / 2)
@@ -538,9 +558,9 @@ class RidgelineView extends WatchUi.WatchFace {
         var last = cols.size() - 1;
 
         var places = [];
-        var prevRight = null;
+        var prevRight = null as Numeric or Null;
         for (var i = 0; i <= last; i++) {
-            var m    = cols[i] as Lang.Array;
+            var m    = cols[i];
             var text = m[textIdx] as Lang.String;
             var valW = dc.getTextWidthInPixels(text, valueFont);
             var lblW = dc.getTextWidthInPixels(m[1] as Lang.String, labelFont);
@@ -551,7 +571,7 @@ class RidgelineView extends WatchUi.WatchFace {
             var rightE = colW / 2;
             if ((valW / 2) + bolt > rightE) { rightE = (valW / 2) + bolt; }
 
-            var x = xs[i] as Lang.Float;
+            var x = xs[i] as Numeric;
             if (i == 0) {
                 var minX = cx - valueHalf + (valW / 2);
                 var minL = cx - labelHalf + (lblW / 2);
@@ -573,7 +593,9 @@ class RidgelineView extends WatchUi.WatchFace {
         return places;
     }
 
-    hidden function drawColumn(dc, x, valueY, labelY, value, label, color, valueFont, labelFont) {
+    hidden function drawColumn(dc as Dc, x as Numeric, valueY as Numeric, labelY as Numeric,
+            value as String, label as String, color as Number,
+            valueFont as Graphics.FontType, labelFont as Graphics.FontType) as Void {
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         dc.drawText(x, valueY, valueFont, value,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -583,7 +605,7 @@ class RidgelineView extends WatchUi.WatchFace {
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    hidden function drawNotificationDot(dc, settings as System.DeviceSettings) {
+    hidden function drawNotificationDot(dc as Dc, settings as System.DeviceSettings) as Void {
         var count = settings.notificationCount;
         if (count == null || count <= 0) {
             return;
@@ -594,12 +616,12 @@ class RidgelineView extends WatchUi.WatchFace {
 
     // ------------------------------------------------------------ lifecycle
 
-    function onEnterSleep() {
+    function onEnterSleep() as Void {
         mLowPower = true;
         WatchUi.requestUpdate();
     }
 
-    function onExitSleep() {
+    function onExitSleep() as Void {
         mLowPower = false;
         mMinuteKey = -1;    // first frame after waking is always rebuilt
         WatchUi.requestUpdate();
