@@ -136,3 +136,20 @@ function ringSourceValidation(logger as Test.Logger) as Lang.Boolean {
         && !RidgelineRing.isValidSource(4) && !RidgelineRing.isValidSource(-1)
         && !RidgelineRing.isValidSource(null) && !RidgelineRing.isValidSource("1");
 }
+
+// A missing or non-positive goal from the watch falls back to Garmin's
+// default for that source, so every source shows progress (PR #58 review).
+(:test)
+function ringGoalFallbacks(logger as Test.Logger) as Lang.Boolean {
+    return RidgelineRing.goalOr(null, RidgelineRing.FLOORS_GOAL) == 10
+        && RidgelineRing.goalOr(0, RidgelineRing.INTENSITY_GOAL) == 150
+        && RidgelineRing.goalOr(-3, RidgelineRing.STEP_GOAL) == 10000
+        && RidgelineRing.goalOr(25, RidgelineRing.FLOORS_GOAL) == 25;
+}
+
+(:test)
+function ringFloorsWithoutGoalUsesDefault(logger as Test.Logger) as Lang.Boolean {
+    var p = RidgelineRing.progress(5, RidgelineRing.goalOr(null, RidgelineRing.FLOORS_GOAL));
+    var s = RidgelineRing.segments(p[0], p[1]);
+    return s[0] == 0 && s[1] == 180;
+}

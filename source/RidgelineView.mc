@@ -264,7 +264,8 @@ class RidgelineView extends WatchUi.WatchFace {
             if (!(info has :floorsClimbed)) {
                 return [0, 0];
             }
-            return RidgelineRing.progress(info.floorsClimbed, info.floorsClimbedGoal);
+            return RidgelineRing.progress(info.floorsClimbed,
+                RidgelineRing.goalOr(info.floorsClimbedGoal, RidgelineRing.FLOORS_GOAL));
         }
         if (mRingSource == RidgelineRing.INTENSITY) {
             if (!(info has :activeMinutesWeek)) {
@@ -272,16 +273,13 @@ class RidgelineView extends WatchUi.WatchFace {
             }
             var week = info.activeMinutesWeek;
             return RidgelineRing.progress((week == null) ? null : week.total,
-                info.activeMinutesWeekGoal);
+                RidgelineRing.goalOr(info.activeMinutesWeekGoal, RidgelineRing.INTENSITY_GOAL));
         }
         if (mRingSource == RidgelineRing.BATTERY) {
             return RidgelineRing.progress(stats.battery, 100);
         }
-        // Locals and if statements: the type checker narrows those, not a
-        // ?: over a field.
-        var goal = info.stepGoal;
-        if (goal == null || goal <= 0) { goal = 10000; }
-        return RidgelineRing.progress(info.steps, goal);
+        return RidgelineRing.progress(info.steps,
+            RidgelineRing.goalOr(info.stepGoal, RidgelineRing.STEP_GOAL));
     }
 
     hidden function drawRing(dc as Dc, value as Number, goal as Number) as Void {
