@@ -2,7 +2,7 @@
 
 A high-legibility Monkey C watch face: oversized time, date, a goal ring
 (steps, floors, intensity minutes or battery), a row of three configurable
-metrics, notification dot and status icons. Built for the Enduro 3's
+metrics, move bar, notification dot and status icons. Built for the Enduro 3's
 280×280 memory-in-pixel display (black background, no gradients — the things MIP
 actually renders well).
 
@@ -177,6 +177,9 @@ press START → *Customize*. Changes apply immediately.
   ring for Do Not Disturb and a triangle while an alarm is set, shown in a
   centred row with the notification dot above the date. Off hides those
   three; the notification dot always shows.
+- Move bar on/off: up to five short red segments at the bottom, just
+  inside the ring, one per level of the watch's inactivity prompt. Nothing
+  shows once you move.
 - Left, middle and right columns: each shows one of heart rate, steps,
   battery, Body Battery, stress, calories, floors climbed, intensity
   minutes, or the Enduro 3's solar intensity, battery days left, next

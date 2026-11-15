@@ -31,6 +31,10 @@
         <settingConfig type="boolean"/>
     </setting>
 
+    <setting propertyKey="@Properties.ShowMoveBar" title="@Strings.ShowMoveBarTitle">
+        <settingConfig type="boolean"/>
+    </setting>
+
     <setting propertyKey="@Properties.LeftMetric" title="@Strings.LeftMetricTitle">
         <settingConfig type="list">
             <listEntry value="0">@Strings.MetricHeartRate</listEntry>
