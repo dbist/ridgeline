@@ -26,6 +26,14 @@ class RidgelineView extends WatchUi.WatchFace {
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
     hidden const LAP_COLORS  = [0x55FF55, 0x00AAFF, 0xAA55FF] as Array<Number>;
 
+    // Move bar (issue #39): red like the native one, at most five 6-degree
+    // segments 2 degrees apart, centred on 6 o'clock (251..289 degrees).
+    // Any wider and the arc rises into the outer metric labels.
+    hidden const MOVE_BAR_COLOR = 0xFF0000;
+    hidden const MOVE_BAR_START = 251;
+    hidden const MOVE_BAR_SEG   = 6;
+    hidden const MOVE_BAR_STEP  = 8;
+
     hidden var mLowPower as Boolean = false;
 
     // mSecsBox (a secondsBox result) is null when a partial redraw must not
@@ -38,6 +46,7 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden var mShowRing  as Boolean = true;
     hidden var mShowStatus as Boolean = true;
     hidden var mRingSource as Number = RidgelineRing.STEPS;
+    hidden var mShowMoveBar as Boolean = true;
     hidden var mLapColors as Array<Number> = LAP_COLORS;
     hidden var mColumns as Lang.Array<Lang.Number> = RidgelineMetrics.COLUMN_DEFAULTS;
     // Tap targets for the metric columns, from the last onUpdate:
@@ -103,6 +112,7 @@ class RidgelineView extends WatchUi.WatchFace {
         mShowSecs = getSetting("ShowSeconds", true) as Boolean;
         mShowRing = getSetting("ShowGoalRing", true) as Boolean;
         mShowStatus = getSetting("ShowStatusIcons", true) as Boolean;
+        mShowMoveBar = getSetting("ShowMoveBar", true) as Boolean;
         var source = getSetting("RingSource", RidgelineRing.STEPS);
         mRingSource = RidgelineRing.isValidSource(source)
             ? (source as Number) : RidgelineRing.STEPS;
@@ -196,6 +206,9 @@ class RidgelineView extends WatchUi.WatchFace {
         if (mShowRing) {
             var p = ringProgress(info, stats);
             drawRing(dc, p[0], p[1]);
+        }
+        if (mShowMoveBar) {
+            drawMoveBar(dc, info);
         }
 
         drawDate(dc);
@@ -310,6 +323,30 @@ class RidgelineView extends WatchUi.WatchFace {
         // 90 degrees is 12 o'clock; sweep clockwise.
         dc.setColor(ringColor(lap), Graphics.COLOR_TRANSPARENT);
         dc.drawArc(cx, cy, radius, Graphics.ARC_CLOCKWISE, 90, RidgelineRing.endAngle(sweep));
+    }
+
+    // One segment per move-bar level, filled left to right, just inside the
+    // goal ring (radius w/2 - 5, pen 6) with a visible gap. Drawn in the
+    // same place whether or not the ring is on.
+    hidden function drawMoveBar(dc as Dc, info as ActivityMonitor.Info) as Void {
+        if (!(info has :moveBarLevel)) {
+            return;
+        }
+        var level = info.moveBarLevel;
+        if (level == null || level <= ActivityMonitor.MOVE_BAR_LEVEL_MIN) {
+            return;
+        }
+        if (level > ActivityMonitor.MOVE_BAR_LEVEL_MAX) {
+            level = ActivityMonitor.MOVE_BAR_LEVEL_MAX;
+        }
+        var radius = (mW / 2) - 5 - 9;
+        dc.setPenWidth(3);
+        dc.setColor(MOVE_BAR_COLOR, Graphics.COLOR_TRANSPARENT);
+        for (var i = 0; i < level; i++) {
+            var start = MOVE_BAR_START + (i * MOVE_BAR_STEP);
+            dc.drawArc(mCx, mCy, radius, Graphics.ARC_COUNTER_CLOCKWISE,
+                start, start + MOVE_BAR_SEG);
+        }
     }
 
     // Lap 0 (working towards the goal) is the accent; every lap past the goal

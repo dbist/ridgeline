@@ -6,6 +6,7 @@
          (week), 3 battery. Append-only; never renumber. -->
     <property id="RingSource" type="number">0</property>
     <property id="ShowStatusIcons" type="boolean">true</property>
+    <property id="ShowMoveBar" type="boolean">true</property>
     <!-- Metric ids from RidgelineMetrics.mc: 0 heart rate, 1 steps,
          2 battery, 3 Body Battery, 4 stress, 5 calories, 6 floors,
          7 intensity minutes, 8 solar, 9 battery days, 10 next sunrise or
