@@ -9,6 +9,21 @@ module RidgelineRing {
     const INTENSITY = 2;
     const BATTERY   = 3;
 
+    // Goals used when the watch reports none, as Garmin's own defaults:
+    // 10,000 steps, 10 floors, 150 intensity minutes a week.
+    const STEP_GOAL      = 10000;
+    const FLOORS_GOAL    = 10;
+    const INTENSITY_GOAL = 150;
+
+    // The watch's goal, or fallback when it is null or not positive.
+    function goalOr(goal as Lang.Numeric or Null,
+            fallback as Lang.Number) as Lang.Number {
+        if (goal == null || goal <= 0) {
+            return fallback;
+        }
+        return goal.toNumber();
+    }
+
     function isValidSource(id as Object or Null) as Lang.Boolean {
         return (id instanceof Lang.Number) && id >= STEPS && id <= BATTERY;
     }

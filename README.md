@@ -169,10 +169,10 @@ press START → *Customize*. Changes apply immediately.
 - Seconds, kept on with the wrist down (off saves battery)
 - Goal ring on/off
 - Ring tracks: steps (default), floors climbed, intensity minutes for the
-  week, or battery. Each fills towards its own goal: the step goal, the
-  floors goal, the weekly intensity-minutes goal, or 100% battery. A source
-  with no goal set shows only the dim track. A full battery is a complete
-  circle in the first lap colour.
+  week, or battery. Each fills towards the goal set on the watch, or
+  Garmin's default when none is set: 10,000 steps, 10 floors or 150
+  intensity minutes a week. Battery fills towards 100%; a full battery is
+  a complete circle in the first lap colour.
 - Status icons on/off: a red ✕ while the phone is disconnected, a barred
   ring for Do Not Disturb and a triangle while an alarm is set, shown in a
   centred row with the notification dot above the date. Off hides those
