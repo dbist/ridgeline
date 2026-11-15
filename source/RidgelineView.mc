@@ -18,6 +18,9 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden const DIM_COLOR   = 0x555555;
     hidden const LABEL_COLOR_BRIGHT = 0xAAAAAA;
     hidden const CHARGING_COLOR = 0x55FF55;
+    hidden const DISCONNECTED_COLOR = 0xFF0000;
+    // Centre-to-centre spacing of the status row's icons.
+    hidden const STATUS_GAP = 14;
 
     // Step-ring colours for each multiple of the goal past the first: light
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
@@ -33,6 +36,7 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden var mAccent    as Number = 0xFF5500;
     hidden var mShowSecs  as Boolean = true;
     hidden var mShowRing  as Boolean = true;
+    hidden var mShowStatus as Boolean = true;
     hidden var mLapColors as Array<Number> = LAP_COLORS;
     hidden var mColumns as Lang.Array<Lang.Number> = RidgelineMetrics.COLUMN_DEFAULTS;
     // Tap targets for the metric columns, from the last onUpdate:
@@ -97,6 +101,7 @@ class RidgelineView extends WatchUi.WatchFace {
         mAccent   = getSetting("AccentColor", 0xFF5500) as Number;
         mShowSecs = getSetting("ShowSeconds", true) as Boolean;
         mShowRing = getSetting("ShowGoalRing", true) as Boolean;
+        mShowStatus = getSetting("ShowStatusIcons", true) as Boolean;
 
         // Which metric each column shows; an unknown id keeps the default.
         var keys = RidgelineMetrics.COLUMN_KEYS;
@@ -205,7 +210,7 @@ class RidgelineView extends WatchUi.WatchFace {
             }
         }
         drawMetrics(dc, info, stats, settings);
-        drawNotificationDot(dc, settings);
+        drawStatusRow(dc, settings);
     }
 
     // Everything that changes at most once a minute: date and time text, the
@@ -605,13 +610,53 @@ class RidgelineView extends WatchUi.WatchFace {
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 
-    hidden function drawNotificationDot(dc as Dc, settings as System.DeviceSettings) as Void {
-        var count = settings.notificationCount;
-        if (count == null || count <= 0) {
-            return;
+    // Status row above the date (issue #38): phone disconnected, do not
+    // disturb, alarm set and the notification dot, each drawn only while its
+    // state is active and centred as a group. ShowStatusIcons hides the
+    // first three; the notification dot always shows.
+    hidden function drawStatusRow(dc as Dc, settings as System.DeviceSettings) as Void {
+        var items = [] as Array<Symbol>;
+        if (mShowStatus) {
+            if (settings.phoneConnected == false) { items.add(:phone); }
+            if (settings.doNotDisturb == true)    { items.add(:dnd); }
+            var alarms = settings.alarmCount;
+            if (alarms != null && alarms > 0)     { items.add(:alarm); }
         }
-        dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
-        dc.fillCircle(mCx, mH * 0.115, 4);
+        var count = settings.notificationCount;
+        if (count != null && count > 0) { items.add(:notify); }
+
+        var n = items.size();
+        var y = mH * 0.115;
+        var x = mCx - (((n - 1) * STATUS_GAP) / 2);
+        for (var i = 0; i < n; i++) {
+            drawStatusIcon(dc, items[i], x + (i * STATUS_GAP), y);
+        }
+    }
+
+    // Each icon fits an 8x8 box centred on (x, y), drawn with primitives so
+    // no font or bitmap is needed.
+    hidden function drawStatusIcon(dc as Dc, item as Symbol, x as Number,
+            y as Float) as Void {
+        var yi = y.toNumber();
+        dc.setPenWidth(2);
+        if (item == :notify) {
+            dc.setColor(mAccent, Graphics.COLOR_TRANSPARENT);
+            dc.fillCircle(x, y, 4);
+        } else if (item == :phone) {
+            // An "x": phone out of range or Bluetooth off.
+            dc.setColor(DISCONNECTED_COLOR, Graphics.COLOR_TRANSPARENT);
+            dc.drawLine(x - 3, yi - 3, x + 3, yi + 3);
+            dc.drawLine(x - 3, yi + 3, x + 3, yi - 3);
+        } else if (item == :dnd) {
+            // A ring with a bar through it, like a no-entry sign.
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+            dc.drawCircle(x, yi, 4);
+            dc.drawLine(x - 3, yi, x + 3, yi);
+        } else if (item == :alarm) {
+            dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+            dc.fillPolygon([[x, yi - 4], [x + 4, yi + 4], [x - 4, yi + 4]]
+                as Array<Graphics.Point2D>);
+        }
     }
 
     // ------------------------------------------------------------ lifecycle

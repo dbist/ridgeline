@@ -71,6 +71,10 @@ class RidgelineSettingsMenu extends WatchUi.Menu2 {
             Rez.Strings.ShowGoalRingTitle, null, :ring,
             true.equals(ridgelineGetProperty("ShowGoalRing", true)), null));
 
+        Menu2.addItem(new WatchUi.ToggleMenuItem(
+            Rez.Strings.ShowStatusIconsTitle, null, :status,
+            true.equals(ridgelineGetProperty("ShowStatusIcons", true)), null));
+
         // One item per metric column (issue #20); ids are the property keys.
         var keys   = RidgelineMetrics.COLUMN_KEYS;
         var titles = RidgelineMetrics.columnTitles();
@@ -98,6 +102,8 @@ class RidgelineSettingsDelegate extends WatchUi.Menu2InputDelegate {
             ridgelineSetProperty("ShowSeconds", (item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :ring) {
             ridgelineSetProperty("ShowGoalRing", (item as WatchUi.ToggleMenuItem).isEnabled());
+        } else if (id == :status) {
+            ridgelineSetProperty("ShowStatusIcons", (item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :accent) {
             openPicker(item, "AccentColor", Rez.Strings.AccentColorTitle,
                 RidgelineColors.names(), RidgelineColors.values(), 0xFF5500);
