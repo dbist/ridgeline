@@ -3,6 +3,42 @@ import Toybox.Lang;
 // Kept free of Dc and ActivityMonitor so (:test) cases can call it directly.
 module RidgelineRing {
 
+    // RingSource values (resources/properties.xml). Append-only.
+    const STEPS     = 0;
+    const FLOORS    = 1;
+    const INTENSITY = 2;
+    const BATTERY   = 3;
+
+    // Goals used when the watch reports none, as Garmin's own defaults:
+    // 10,000 steps, 10 floors, 150 intensity minutes a week.
+    const STEP_GOAL      = 10000;
+    const FLOORS_GOAL    = 10;
+    const INTENSITY_GOAL = 150;
+
+    // The watch's goal, or fallback when it is null or not positive.
+    function goalOr(goal as Lang.Numeric or Null,
+            fallback as Lang.Number) as Lang.Number {
+        if (goal == null || goal <= 0) {
+            return fallback;
+        }
+        return goal.toNumber();
+    }
+
+    function isValidSource(id as Object or Null) as Lang.Boolean {
+        return (id instanceof Lang.Number) && id >= STEPS && id <= BATTERY;
+    }
+
+    // [value, goal] ready for segments(). A null value is 0; a null or
+    // non-positive goal means no data, which segments() draws as nothing.
+    function progress(value as Lang.Numeric or Null,
+            goal as Lang.Numeric or Null) as Lang.Array<Lang.Number> {
+        if (goal == null || goal <= 0) {
+            return [0, 0];
+        }
+        var v = (value == null) ? 0 : value.toNumber();
+        return [v, goal.toNumber()];
+    }
+
     // Integer division, so an exact multiple of the goal is sweep 0 of the
     // next lap rather than a float just under 360. The sweep is floored, not
     // rounded: 360 would make drawArc's endpoints equal and draw a full

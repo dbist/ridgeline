@@ -10,7 +10,9 @@
     <string id="ColorWhite">White</string>
 
     <string id="ShowSecondsTitle">Show seconds</string>
-    <string id="ShowGoalRingTitle">Step-goal ring</string>
+    <string id="ShowGoalRingTitle">Goal ring</string>
+    <string id="RingSourceTitle">Ring tracks</string>
+    <string id="RingIntensityWeek">Intensity minutes (week)</string>
     <string id="ShowStatusIconsTitle">Status icons</string>
 
     <string id="LeftMetricTitle">Left column</string>

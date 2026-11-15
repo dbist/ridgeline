@@ -1,7 +1,8 @@
 # Ridgeline — Garmin Enduro 3 watch face
 
-A high-legibility Monkey C watch face: oversized time, date, step-goal ring,
-row of three configurable metrics, notification dot and status icons. Built for the Enduro 3's
+A high-legibility Monkey C watch face: oversized time, date, a goal ring
+(steps, floors, intensity minutes or battery), a row of three configurable
+metrics, notification dot and status icons. Built for the Enduro 3's
 280×280 memory-in-pixel display (black background, no gradients — the things MIP
 actually renders well).
 
@@ -166,7 +167,12 @@ press START → *Customize*. Changes apply immediately.
 
 - Accent colour (orange / red / green / blue / yellow / white)
 - Seconds, kept on with the wrist down (off saves battery)
-- Step-goal ring on/off
+- Goal ring on/off
+- Ring tracks: steps (default), floors climbed, intensity minutes for the
+  week, or battery. Each fills towards the goal set on the watch, or
+  Garmin's default when none is set: 10,000 steps, 10 floors or 150
+  intensity minutes a week. Battery fills towards 100%; a full battery is
+  a complete circle in the first lap colour.
 - Status icons on/off: a red ✕ while the phone is disconnected, a barred
   ring for Do Not Disturb and a triangle while an alarm is set, shown in a
   centred row with the notification dot above the date. Off hides those
@@ -180,7 +186,7 @@ press START → *Customize*. Changes apply immediately.
   room, values of 10,000 or more shorten to `12.3k`. Touch and hold a
   column to open the watch's own widget for that metric.
 
-The ring fills in the accent colour until you reach the step goal. Past the
+The ring fills in the accent colour until you reach the goal. Past the
 goal, each further multiple of it is a lap in its own colour — light green,
 then blue, then purple, then repeating — sweeping over the completed lap. A
 lap colour that matches your accent is skipped, so the first lap past the goal
