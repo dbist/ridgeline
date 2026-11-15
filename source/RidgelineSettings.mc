@@ -25,6 +25,21 @@ module RidgelineColors {
     }
 }
 
+// Goal-ring sources, in RidgelineRing order and matching settings.xml.
+module RidgelineRingSources {
+    function values() as Lang.Array<Lang.Number> {
+        return [RidgelineRing.STEPS, RidgelineRing.FLOORS,
+                RidgelineRing.INTENSITY, RidgelineRing.BATTERY];
+    }
+
+    function names() as Lang.Array<Lang.ResourceId> {
+        return [
+            Rez.Strings.MetricSteps, Rez.Strings.MetricFloors,
+            Rez.Strings.RingIntensityWeek, Rez.Strings.MetricBattery
+        ];
+    }
+}
+
 function ridgelineSetProperty(key as String, value as Properties.ValueType) as Void {
     Application.Properties.setValue(key, value);
     // Same path as a Garmin Connect change: reload into the view and redraw.
@@ -71,6 +86,12 @@ class RidgelineSettingsMenu extends WatchUi.Menu2 {
             Rez.Strings.ShowGoalRingTitle, null, :ring,
             true.equals(ridgelineGetProperty("ShowGoalRing", true)), null));
 
+        var source = ridgelineGetProperty("RingSource", RidgelineRing.STEPS);
+        Menu2.addItem(new WatchUi.MenuItem(
+            Rez.Strings.RingSourceTitle,
+            ridgelineNameOf(RidgelineRingSources.names(), RidgelineRingSources.values(), source),
+            :ringSource, null));
+
         Menu2.addItem(new WatchUi.ToggleMenuItem(
             Rez.Strings.ShowStatusIconsTitle, null, :status,
             true.equals(ridgelineGetProperty("ShowStatusIcons", true)), null));
@@ -104,6 +125,10 @@ class RidgelineSettingsDelegate extends WatchUi.Menu2InputDelegate {
             ridgelineSetProperty("ShowGoalRing", (item as WatchUi.ToggleMenuItem).isEnabled());
         } else if (id == :status) {
             ridgelineSetProperty("ShowStatusIcons", (item as WatchUi.ToggleMenuItem).isEnabled());
+        } else if (id == :ringSource) {
+            openPicker(item, "RingSource", Rez.Strings.RingSourceTitle,
+                RidgelineRingSources.names(), RidgelineRingSources.values(),
+                RidgelineRing.STEPS);
         } else if (id == :accent) {
             openPicker(item, "AccentColor", Rez.Strings.AccentColorTitle,
                 RidgelineColors.names(), RidgelineColors.values(), 0xFF5500);

@@ -89,3 +89,50 @@ function ringEndNeverEqualsStart(logger as Test.Logger) as Lang.Boolean {
     }
     return true;
 }
+
+// RingSource progress (issue #40): null value, null goal, zero goal and a
+// value past the goal.
+(:test)
+function ringProgressNullValueIsZero(logger as Test.Logger) as Lang.Boolean {
+    var p = RidgelineRing.progress(null, 10);
+    var s = RidgelineRing.segments(p[0], p[1]);
+    return p[0] == 0 && p[1] == 10 && s[0] == 0 && s[1] == 0;
+}
+
+(:test)
+function ringProgressNullGoalDrawsNothing(logger as Test.Logger) as Lang.Boolean {
+    var p = RidgelineRing.progress(12, null);
+    var s = RidgelineRing.segments(p[0], p[1]);
+    return s[0] == 0 && s[1] == 0;
+}
+
+(:test)
+function ringProgressZeroGoalDrawsNothing(logger as Test.Logger) as Lang.Boolean {
+    var a = RidgelineRing.progress(12, 0);
+    var b = RidgelineRing.progress(12, -5);
+    var sa = RidgelineRing.segments(a[0], a[1]);
+    var sb = RidgelineRing.segments(b[0], b[1]);
+    return sa[0] == 0 && sa[1] == 0 && sb[0] == 0 && sb[1] == 0;
+}
+
+(:test)
+function ringProgressPastGoalLaps(logger as Test.Logger) as Lang.Boolean {
+    var p = RidgelineRing.progress(15, 10);   // 1.5 x the goal
+    var s = RidgelineRing.segments(p[0], p[1]);
+    return s[0] == 1 && s[1] == 180;
+}
+
+// Battery is a Float percentage against a goal of 100.
+(:test)
+function ringProgressBatteryHalf(logger as Test.Logger) as Lang.Boolean {
+    var p = RidgelineRing.progress(50.0, 100);
+    var s = RidgelineRing.segments(p[0], p[1]);
+    return s[0] == 0 && s[1] == 180;
+}
+
+(:test)
+function ringSourceValidation(logger as Test.Logger) as Lang.Boolean {
+    return RidgelineRing.isValidSource(0) && RidgelineRing.isValidSource(3)
+        && !RidgelineRing.isValidSource(4) && !RidgelineRing.isValidSource(-1)
+        && !RidgelineRing.isValidSource(null) && !RidgelineRing.isValidSource("1");
+}

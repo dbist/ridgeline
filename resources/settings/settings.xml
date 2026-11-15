@@ -18,6 +18,15 @@
         <settingConfig type="boolean"/>
     </setting>
 
+    <setting propertyKey="@Properties.RingSource" title="@Strings.RingSourceTitle">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.MetricSteps</listEntry>
+            <listEntry value="1">@Strings.MetricFloors</listEntry>
+            <listEntry value="2">@Strings.RingIntensityWeek</listEntry>
+            <listEntry value="3">@Strings.MetricBattery</listEntry>
+        </settingConfig>
+    </setting>
+
     <setting propertyKey="@Properties.ShowStatusIcons" title="@Strings.ShowStatusIconsTitle">
         <settingConfig type="boolean"/>
     </setting>

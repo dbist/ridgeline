@@ -22,7 +22,7 @@ class RidgelineView extends WatchUi.WatchFace {
     // Centre-to-centre spacing of the status row's icons.
     hidden const STATUS_GAP = 14;
 
-    // Step-ring colours for each multiple of the goal past the first: light
+    // Goal-ring colours for each multiple of the goal past the first: light
     // green, blue, purple, then repeat. All are in the 64-colour MIP palette.
     hidden const LAP_COLORS  = [0x55FF55, 0x00AAFF, 0xAA55FF] as Array<Number>;
 
@@ -37,6 +37,7 @@ class RidgelineView extends WatchUi.WatchFace {
     hidden var mShowSecs  as Boolean = true;
     hidden var mShowRing  as Boolean = true;
     hidden var mShowStatus as Boolean = true;
+    hidden var mRingSource as Number = RidgelineRing.STEPS;
     hidden var mLapColors as Array<Number> = LAP_COLORS;
     hidden var mColumns as Lang.Array<Lang.Number> = RidgelineMetrics.COLUMN_DEFAULTS;
     // Tap targets for the metric columns, from the last onUpdate:
@@ -102,6 +103,9 @@ class RidgelineView extends WatchUi.WatchFace {
         mShowSecs = getSetting("ShowSeconds", true) as Boolean;
         mShowRing = getSetting("ShowGoalRing", true) as Boolean;
         mShowStatus = getSetting("ShowStatusIcons", true) as Boolean;
+        var source = getSetting("RingSource", RidgelineRing.STEPS);
+        mRingSource = RidgelineRing.isValidSource(source)
+            ? (source as Number) : RidgelineRing.STEPS;
 
         // Which metric each column shows; an unknown id keeps the default.
         var keys = RidgelineMetrics.COLUMN_KEYS;
@@ -190,7 +194,8 @@ class RidgelineView extends WatchUi.WatchFace {
         }
 
         if (mShowRing) {
-            drawStepRing(dc, info);
+            var p = ringProgress(info, stats);
+            drawRing(dc, p[0], p[1]);
         }
 
         drawDate(dc);
@@ -252,15 +257,36 @@ class RidgelineView extends WatchUi.WatchFace {
         mSecsLayout = secondsBox(dc, rightX, mTimeBaseY, fontH);
     }
 
-    hidden function drawStepRing(dc as Dc, info as ActivityMonitor.Info) as Void {
-        var cx      = mCx;
-        var cy      = mCy;
+    // [value, goal] for the goal ring's source (RingSource, issue #40).
+    hidden function ringProgress(info as ActivityMonitor.Info,
+            stats as System.Stats) as Array<Number> {
+        if (mRingSource == RidgelineRing.FLOORS) {
+            if (!(info has :floorsClimbed)) {
+                return [0, 0];
+            }
+            return RidgelineRing.progress(info.floorsClimbed, info.floorsClimbedGoal);
+        }
+        if (mRingSource == RidgelineRing.INTENSITY) {
+            if (!(info has :activeMinutesWeek)) {
+                return [0, 0];
+            }
+            var week = info.activeMinutesWeek;
+            return RidgelineRing.progress((week == null) ? null : week.total,
+                info.activeMinutesWeekGoal);
+        }
+        if (mRingSource == RidgelineRing.BATTERY) {
+            return RidgelineRing.progress(stats.battery, 100);
+        }
         // Locals and if statements: the type checker narrows those, not a
         // ?: over a field.
-        var steps   = info.steps;
-        if (steps == null) { steps = 0; }
-        var goal    = info.stepGoal;
+        var goal = info.stepGoal;
         if (goal == null || goal <= 0) { goal = 10000; }
+        return RidgelineRing.progress(info.steps, goal);
+    }
+
+    hidden function drawRing(dc as Dc, value as Number, goal as Number) as Void {
+        var cx      = mCx;
+        var cy      = mCy;
         var radius  = (mW / 2) - 5;
 
         dc.setPenWidth(2);
@@ -270,7 +296,7 @@ class RidgelineView extends WatchUi.WatchFace {
 
         // A completed lap stays as a full circle in its own colour; the next
         // lap sweeps over it.
-        var seg   = RidgelineRing.segments(steps, goal);
+        var seg   = RidgelineRing.segments(value, goal);
         var lap   = seg[0];
         var sweep = seg[1];
 
@@ -331,7 +357,7 @@ class RidgelineView extends WatchUi.WatchFace {
         // instead of the box (14px of FONT_NUMBER_HOT's 107px on the Enduro 3).
         var y = baseY - (timeH / 2) + (textH / 2) + (timeH * 0.13);
 
-        // Keep the label inside the step ring, not just the square screen:
+        // Keep the label inside the goal ring, not just the square screen:
         // at this height the ring is well inside w - 8, and "PM" after 12:59
         // ran across it. Clamp to the ring's chord at the label's top edge
         // (the edge furthest from the centre, so the narrowest), measured
@@ -534,7 +560,7 @@ class RidgelineView extends WatchUi.WatchFace {
         return null;
     }
 
-    // Half-width of the area inside the step ring (inner edge less a margin)
+    // Half-width of the area inside the goal ring (inner edge less a margin)
     // at height y; text lines are tested at their baseline, where the glyphs
     // end, rather than their centre.
     hidden function ringHalfWidth(w as Number, h as Number, y as Numeric) as Numeric {
