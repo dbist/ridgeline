@@ -95,19 +95,27 @@ see *Layout notes* below.
 
 ### Strict type checking
 
-`monkeyc -l 3` currently reports ~78 errors. Nearly all are missing type
-annotations (`Member 'x' is untyped`, then `Cannot determine type for method
-invocation` cascading from every `Any`). Three more are null-narrowing
-limitations: the checker will not follow `(x == null) ? 0 : x` or a `||`
-short-circuit, so `drawStepRing` and `drawMetrics` flag despite being safe.
+The project builds clean at type-check level 3 (strict), with no warnings.
+`monkey.jungle` sets `project.typecheck = 3`, so every build enforces it: a
+missing annotation or an unsafe use of a nullable value fails the build
+without any extra flag.
+
+Patterns the checker needs:
+
+- **Annotate every member, parameter and return type.** Files use
+  `import Toybox.X;` rather than `using`, which brings the module's types
+  (`Number`, `Dc`, `MenuItem`, ...) into scope for annotations.
+- **Narrow with a local and an `if`.** The checker follows
+  `if (x == null) { x = 0; }` on a local, but not `(x == null) ? 0 : x` over
+  a field such as `info.steps`.
+- **Cast values read out of an untyped `Array`** (the metric tuples, hit
+  boxes) at the point of use: `m[1] as String`.
 
 One is a genuine API wart worth knowing: `Gregorian.Info` declares `month` and
 `day_of_week` as `Number or String`, and they are only `String` under
-`FORMAT_MEDIUM`. `.toUpper()` on them therefore fails the strict checker.
-Verified correct at runtime — the face renders without throwing — but it is not
-provably safe from the types alone.
-
-The default type-check level builds clean.
+`FORMAT_MEDIUM`. `layoutMinute` therefore casts them
+(`(now.month as String).toUpper()`); the cast is safe because the date is
+always read with `FORMAT_MEDIUM`.
 
 ## Install on the watch — no app store needed
 

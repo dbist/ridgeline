@@ -82,22 +82,14 @@ jobs:
           openssl pkcs8 -topk8 -inform PEM -outform DER \
             -in ci_key.pem -out ci_key.der -nocrypt
 
+      # monkey.jungle sets project.typecheck = 3, so this also fails on
+      # strict type errors.
       - name: Build for enduro3
         run: |
           set -euo pipefail
           mkdir -p build
           monkeyc -d enduro3 -f monkey.jungle \
             -o build/Ridgeline.prg -y ci_key.der -r
-
-      - name: Type check (report only)
-        continue-on-error: true
-        run: |
-          # ~78 errors today, nearly all missing type annotations. Reported so
-          # the count is visible and can be driven down, not enforced -- see
-          # the strict type checking section of the README.
-          monkeyc -d enduro3 -f monkey.jungle \
-            -o /tmp/strict.prg -y ci_key.der -l 3 2>&1 | tee strict.log || true
-          echo "strict-mode findings: $(grep -c '^ERROR' strict.log || echo 0)"
 
       - name: Remove the signing key before archiving
         if: always()
