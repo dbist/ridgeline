@@ -58,6 +58,11 @@ from Garmin, and building for a specific watch requires personal Garmin account
 credentials. That decision is recorded in issue #1. For this repository, local
 verification is what counts.
 
+## Releases
+
+Releases are cut by the maintainer; the steps, including the checksum and
+signed tag, are in [RELEASING.md](RELEASING.md).
+
 ## Licensing
 
 By contributing, you agree that your contribution is licensed under the
